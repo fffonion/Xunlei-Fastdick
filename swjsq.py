@@ -21,6 +21,7 @@ if sys.version.startswith('2'):
     rsa_pubexp = long(rsa_pubexp)
 else:
     import urllib.request as urllib2
+    from io import BytesIO as sio
 
 account_file_encrypted = '.swjsq.account'
 account_file_plain = 'swjsq.account.txt'
@@ -61,8 +62,8 @@ except ImportError:
 
     @cached
     def rsa_encode(data):
-        result = modpow(str_to_int(data), long(rsa_pubexp, 16), long(rsa_mod, 16))
-        return hex(result).upper()[2:-1].upper()
+        result = modpow(str_to_int(data), rsa_pubexp, rsa_mod)
+        return hex(result).upper()[2:].rstrip('L').upper()
 else:
     cipher = RSA.construct((rsa_mod, rsa_pubexp))
     def rsa_encode(s):
@@ -73,11 +74,13 @@ TYPE_NORMAL_ACCOUNT = 0
 TYPE_NUM_ACCOUNT = 1
 
 header_xl = {
+    'Content-Type':'',
     'Connection': 'Keep-Alive',
     'Accept-Encoding': 'gzip',
     'User-Agent': 'android-async-http/1.4.3 (http://loopj.com/android-async-http)'
 }
 header_api = {
+    'Content-Type':'',
     'Connection': 'Keep-Alive',
     'Accept-Encoding': 'gzip',
     'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 5.0.1; SmallRice Build/LRX22C)'
@@ -110,12 +113,17 @@ MAC = get_mac(to_splt = '').upper() + '004V'
 def long2hex(l):
     return hex(l)[2:].upper().rstrip('L')
 
-def http_req(url, headers = {}, body = None):
+def http_req(url, headers = {}, body = None, encoding = 'utf-8'):
     req = urllib2.Request(url)
     for k in headers:
         req.add_header(k, headers[k])
+    if sys.version.startswith('3') and isinstance(body, str):
+        body = bytes(body, encoding = 'ascii')
     resp = urllib2.urlopen(req, data = body)
-    return resp.read()
+    ret = resp.read().decode(encoding)
+    if sys.version.startswith('3') and isinstance(ret, bytes):
+        ret = str(ret)
+    return ret
 
 def login_xunlei(uname, pwd_md5, login_type = TYPE_NORMAL_ACCOUNT):
     pwd = rsa_encode(pwd_md5)
@@ -141,9 +149,9 @@ def login_xunlei(uname, pwd_md5, login_type = TYPE_NORMAL_ACCOUNT):
                 "n": long2hex(rsa_mod)
             },
             "extensionList": ""
-        }), headers = header_xl
+        }), headers = header_xl, encoding = 'gbk'
     )
-    return json.loads(ct.decode('gbk'))
+    return json.loads(ct)
 
 
 def api(cmd, uid, session_id = ''):
@@ -234,6 +242,7 @@ done
 ''')
 
 def update_ipk():
+    #FIXME: 3.X compatibility
     def get_sio(tar, name):
         return sio(tar.extractfile(name).read())
 
@@ -258,7 +267,7 @@ def update_ipk():
 
     data_stream = sio()
     data_fobj = tarfile.open(fileobj = data_stream, mode = 'w:gz')
-    data_content = open(shell_file, 'rb')
+    data_content = open(shell_file, 'r')
     add_to_tar(data_fobj, './bin/swjsq', data_content)
     data_fobj.close()
     add_to_tar(ipk_fobj, './data.tar.gz', data_stream)
@@ -291,7 +300,7 @@ Description:  Xunlei Fast Dick
 
     ipk_fobj.close()
 
-
+    
 if __name__ == '__main__':
     if os.path.exists(account_file_plain):
         uid, pwd = open(account_file_plain).read().strip().split(',')
