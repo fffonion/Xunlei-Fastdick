@@ -6,6 +6,7 @@ import json
 import time
 import hashlib
 import binascii
+import tarfile
 import ssl
 
 #xunlei use self-signed certificate; on py2.7.9+
@@ -16,12 +17,15 @@ rsa_mod = 0xD6F1CFBF4D9F70710527E1B1911635460B1FF9AB7C202294D04A6F135A906E90E239
 rsa_pubexp = 0x010001
 if sys.version.startswith('2'):
     import urllib2
+    from cStringIO import StringIO as sio
     rsa_pubexp = long(rsa_pubexp)
 else:
     import urllib.request as urllib2
 
 account_file_encrypted = '.swjsq.account'
 account_file_plain = 'swjsq.account.txt'
+shell_file = 'swjsq_wget.sh'
+ipk_file = 'swjsq_0.0.1_all.ipk'
 
 try:
     from Crypto.PublicKey import RSA
@@ -115,7 +119,6 @@ def http_req(url, headers = {}, body = None):
 
 def login_xunlei(uname, pwd_md5, login_type = TYPE_NORMAL_ACCOUNT):
     pwd = rsa_encode(pwd_md5)
-
     ct = http_req('https://login.mobile.reg2t.sandai.net:443/', body = json.dumps(
         {
             "protocolVersion": 101,
@@ -172,6 +175,10 @@ def fast_d1ck(uname, pwd, login_type, save = True):
             pass
         with open(account_file_encrypted, 'w') as f:
             f.write('%s,%s' % (dt['userID'], pwd))
+    if not os.path.exists(shell_file):
+        make_wget_script(dt['userID'], pwd)
+    if not os.path.exists(ipk_file):
+        update_ipk()
 
     _ = api('bandwidth', dt['userID'])
     if not _['can_upgrade']:
@@ -207,13 +214,91 @@ def fast_d1ck(uname, pwd, login_type, save = True):
         i+=1
         time.sleep(300)#5 min
 
+def make_wget_script(uid, pwd):
+    open(shell_file, 'w').write(
+'''#!/bin/bash
+uid='''+str(uid)+'''
+pwd='''+rsa_encode(pwd)+'''
+nic=eth0
+peerid='''+MAC+'''
+ret=`wget https://login.mobile.reg2t.sandai.net:443/ --post-data="{\\"userName\\": \\""$uid"\\", \\"businessType\\": 68, \\"clientVersion\\": \\"1.1\\", \\"appName\\": \\"ANDROID-com.xunlei.vip.swjsq\\", \\"isCompressed\\": 0, \\"sequenceNo\\": 1000001, \\"sessionID\\": \\"\\", \\"loginType\\": 1, \\"rsaKey\\": {\\"e\\": \\"'''+long2hex(rsa_pubexp)+'''\\", \\"n\\": \\"'''+long2hex(rsa_mod)+'''\\"}, \\"cmdID\\": 1, \\"verifyCode\\": \\"\\", \\"peerID\\": \\""$peerid"\\", \\"protocolVersion\\": 101, \\"platformVersion\\": 1, \\"passWord\\": \\""$pwd"\\", \\"extensionList\\": \\"\\", \\"verifyKey\\": \\"\\"}" --no-check-certificate -O -`
+session=`echo $ret|grep -oP "sessionID\\"\s*:\s*\\"([\dA-F]{32})\\""|grep -oP "([\dA-F]{32})"`
+uid=`echo $ret|grep -oP "userID\\"\s*:\s*(\d+)"|grep -oP "\d+"`
+wget "http://api.swjsq.vip.xunlei.com/v2/upgrade?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session" -O -
+while true
+do
+    wget "http://api.swjsq.vip.xunlei.com/v2/keepalive?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session" -O -
+    sleep 300
+done
+
+''')
+
+def update_ipk():
+    def get_sio(tar, name):
+        return sio(tar.extractfile(name).read())
+
+    def flen(fobj):
+        pos = fobj.tell()
+        fobj.seek(0)
+        _ = len(fobj.read())
+        fobj.seek(pos)
+        return _
+
+    def add_to_tar(tar, name, sio_obj, mode = 33279):
+        info = tarfile.TarInfo(name = name)
+        info.size = flen(sio_obj)
+        info.mode = mode
+        sio_obj.seek(0)
+        tar.addfile(info, sio_obj)
+
+
+    if os.path.exists(ipk_file):
+        os.remove(ipk_file)
+    ipk_fobj = tarfile.open(name = ipk_file, mode = 'w:gz')
+
+    data_stream = sio()
+    data_fobj = tarfile.open(fileobj = data_stream, mode = 'w:gz')
+    data_content = open(shell_file, 'rb')
+    add_to_tar(data_fobj, './bin/swjsq', data_content)
+    data_fobj.close()
+    add_to_tar(ipk_fobj, './data.tar.gz', data_stream)
+    data_stream.close()
+
+
+    control_stream = sio()
+    control_fobj = tarfile.open(fileobj = control_stream, mode = 'w:gz')
+    control_content = sio('''Package: swjsq
+Version: 0.0.1
+Depends: libc
+Source: none
+Section: net
+Maintainer: fffonion
+Architecture: all
+Installed-Size: %d
+Description:  Xunlei Fast Dick
+''' % flen(data_content))
+    add_to_tar(control_fobj, './control', control_content)
+    control_fobj.close()
+    add_to_tar(ipk_fobj, './control.tar.gz', control_stream)
+    control_stream.close()
+
+    data_content.close()
+    control_content.close()
+
+    debian_binary_stream = sio('2.0\n')
+    add_to_tar(ipk_fobj, './debian-binary', debian_binary_stream)
+    debian_binary_stream.close()
+
+    ipk_fobj.close()
+
+
 if __name__ == '__main__':
-    if os.path.exists(account_file_encrypted):
-        uid, pwd_md5 = open(account_file_encrypted).read().strip().split(',')
-        fast_d1ck(uid, pwd_md5, TYPE_NUM_ACCOUNT, save = False)
-    elif os.path.exists(account_file_plain):
+    if os.path.exists(account_file_plain):
         uid, pwd = open(account_file_plain).read().strip().split(',')
         fast_d1ck(uid, hashlib.md5(pwd).hexdigest(), TYPE_NORMAL_ACCOUNT)
+    elif os.path.exists(account_file_encrypted):
+        uid, pwd_md5 = open(account_file_encrypted).read().strip().split(',')
+        fast_d1ck(uid, pwd_md5, TYPE_NUM_ACCOUNT, save = False)
     else:
         print('Please create config file "%s", input account splitting with comma(,). Eg:\nyonghuming,mima' % account_file_plain)
 

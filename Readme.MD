@@ -11,11 +11,11 @@
 
 # 说明
 * 明文存储的密码将会在第一次登陆成功后保存为数字ID和密码的MD5，明文文件将会删除
-* 需要迅雷白金会员或普通会员VIP6及以上，不能使用子账号
+* 会员权限及月加速流量等详见[这里](http://swjsq.xunlei.com)
 * 自带[这里抄的](https://github.com/mengskysama/XunLeiCrystalMinesMakeDie/blob/master/run.py)纯python实现RSA加密，可选安装pycrypto加快(首次)运算速度
+* 登陆成功后会生成`swjsq_wget.sh`以及一个ipk包，可用于直接调用或者安装后运行 __/bin/swjsq__
 
 # TODO
 * session过期时间
-*　lua版
-*　wget版
+* web前端
 
