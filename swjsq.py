@@ -8,6 +8,7 @@ import hashlib
 import binascii
 import tarfile
 import ssl
+import atexit
 
 #xunlei use self-signed certificate; on py2.7.9+
 if hasattr(ssl, '_create_unverified_context') and hasattr(ssl, '_create_default_https_context'):
@@ -200,13 +201,17 @@ def fast_d1ck(uname, pwd, login_type, save = True):
         _['bandwidth']['upstream']/1024,
         _['max_bandwidth']['upstream']/1024,
     ))
-
+    #print(_)
+    atexit.register(lambda: api('recover', dt['userID'], dt['sessionID']))
     i = 0
     while True:
         try:
-            if i == 0:#30min
+            if i % 6 == 0:#30min
                 print('Initializing upgrade')
+                if i:
+                    dt = login_xunlei(uname, pwd, login_type)
                 _ = api('upgrade', dt['userID'], dt['sessionID'])
+                #print(_)
                 if not _['errno']:
                     print('Upgrade done: Down %dM, Up %dM' % (_['bandwidth']['downstream'], _['bandwidth']['upstream']))
             else:
@@ -220,7 +225,7 @@ def fast_d1ck(uname, pwd, login_type, save = True):
             print(_)
         open('swjsq.log', 'a').write('%s %s\n' % (time.strftime('%X', time.localtime(time.time())), _))
         i+=1
-        time.sleep(300)#5 min
+        time.sleep(270)#5 min
 
 def make_wget_script(uid, pwd):
     open(shell_file, 'w').write(
@@ -232,12 +237,21 @@ peerid='''+MAC+'''
 ret=`wget https://login.mobile.reg2t.sandai.net:443/ --post-data="{\\"userName\\": \\""$uid"\\", \\"businessType\\": 68, \\"clientVersion\\": \\"1.1\\", \\"appName\\": \\"ANDROID-com.xunlei.vip.swjsq\\", \\"isCompressed\\": 0, \\"sequenceNo\\": 1000001, \\"sessionID\\": \\"\\", \\"loginType\\": 1, \\"rsaKey\\": {\\"e\\": \\"'''+long2hex(rsa_pubexp)+'''\\", \\"n\\": \\"'''+long2hex(rsa_mod)+'''\\"}, \\"cmdID\\": 1, \\"verifyCode\\": \\"\\", \\"peerID\\": \\""$peerid"\\", \\"protocolVersion\\": 101, \\"platformVersion\\": 1, \\"passWord\\": \\""$pwd"\\", \\"extensionList\\": \\"\\", \\"verifyKey\\": \\"\\"}" --no-check-certificate -O -`
 session=`echo $ret|grep -oP "sessionID\\"\s*:\s*\\"([\dA-F]{32})\\""|grep -oP "([\dA-F]{32})"`
 uid=`echo $ret|grep -oP "userID\\"\s*:\s*(\d+)"|grep -oP "\d+"`
-wget "http://api.swjsq.vip.xunlei.com/v2/upgrade?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session" -O -
+
+i=0
 while true
 do
+    if test $i -eq 6
+    then
+        wget "http://api.swjsq.vip.xunlei.com/v2/upgrade?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session" -O -
+        i=0
+    fi
+    sleep 1
     wget "http://api.swjsq.vip.xunlei.com/v2/keepalive?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session" -O -
+    let i=i+1
     sleep 300
 done
+
 
 ''')
 
@@ -300,16 +314,19 @@ Description:  Xunlei Fast Dick
 
     ipk_fobj.close()
 
-    
+
 if __name__ == '__main__':
-    if os.path.exists(account_file_plain):
-        uid, pwd = open(account_file_plain).read().strip().split(',')
-        fast_d1ck(uid, hashlib.md5(pwd).hexdigest(), TYPE_NORMAL_ACCOUNT)
-    elif os.path.exists(account_file_encrypted):
-        uid, pwd_md5 = open(account_file_encrypted).read().strip().split(',')
-        fast_d1ck(uid, pwd_md5, TYPE_NUM_ACCOUNT, save = False)
-    else:
-        print('Please create config file "%s", input account splitting with comma(,). Eg:\nyonghuming,mima' % account_file_plain)
+    try:
+        if os.path.exists(account_file_plain):
+            uid, pwd = open(account_file_plain).read().strip().split(',')
+            fast_d1ck(uid, hashlib.md5(pwd).hexdigest(), TYPE_NORMAL_ACCOUNT)
+        elif os.path.exists(account_file_encrypted):
+            uid, pwd_md5 = open(account_file_encrypted).read().strip().split(',')
+            fast_d1ck(uid, pwd_md5, TYPE_NUM_ACCOUNT, save = False)
+        else:
+            print('Please create config file "%s", input account splitting with comma(,). Eg:\nyonghuming,mima' % account_file_plain)
+    except KeyboardInterrupt:
+        pass
 
     
     
