@@ -209,6 +209,8 @@ def fast_d1ck(uname, pwd, login_type, save = True):
             if i % 6 == 0:#30min
                 print('Initializing upgrade')
                 if i:
+                    api('recover', dt['userID'], dt['sessionID'])
+                    time.sleep(5)
                     dt = login_xunlei(uname, pwd, login_type)
                 _ = api('upgrade', dt['userID'], dt['sessionID'])
                 #print(_)
@@ -218,7 +220,7 @@ def fast_d1ck(uname, pwd, login_type, save = True):
                 _ = api('keepalive', dt['userID'], dt['sessionID'])
             if _['errno']:
                 print('Error: %s' % _['message'])
-                os._exit(4) 
+                time.sleep(300)#os._exit(4) 
         except Exception as ex:
             import traceback
             _ = traceback.format_exc()
@@ -234,15 +236,15 @@ uid='''+str(uid)+'''
 pwd='''+rsa_encode(pwd)+'''
 nic=eth0
 peerid='''+MAC+'''
-ret=`wget https://login.mobile.reg2t.sandai.net:443/ --post-data="{\\"userName\\": \\""$uid"\\", \\"businessType\\": 68, \\"clientVersion\\": \\"1.1\\", \\"appName\\": \\"ANDROID-com.xunlei.vip.swjsq\\", \\"isCompressed\\": 0, \\"sequenceNo\\": 1000001, \\"sessionID\\": \\"\\", \\"loginType\\": 1, \\"rsaKey\\": {\\"e\\": \\"'''+long2hex(rsa_pubexp)+'''\\", \\"n\\": \\"'''+long2hex(rsa_mod)+'''\\"}, \\"cmdID\\": 1, \\"verifyCode\\": \\"\\", \\"peerID\\": \\""$peerid"\\", \\"protocolVersion\\": 101, \\"platformVersion\\": 1, \\"passWord\\": \\""$pwd"\\", \\"extensionList\\": \\"\\", \\"verifyKey\\": \\"\\"}" --no-check-certificate -O -`
-session=`echo $ret|grep -oP "sessionID\\"\s*:\s*\\"([\dA-F]{32})\\""|grep -oP "([\dA-F]{32})"`
-uid=`echo $ret|grep -oP "userID\\"\s*:\s*(\d+)"|grep -oP "\d+"`
 
-i=0
+i=6
 while true
 do
     if test $i -eq 6
     then
+        ret=`wget https://login.mobile.reg2t.sandai.net:443/ --post-data="{\\"userName\\": \\""$uid"\\", \\"businessType\\": 68, \\"clientVersion\\": \\"1.1\\", \\"appName\\": \\"ANDROID-com.xunlei.vip.swjsq\\", \\"isCompressed\\": 0, \\"sequenceNo\\": 1000001, \\"sessionID\\": \\"\\", \\"loginType\\": 1, \\"rsaKey\\": {\\"e\\": \\"'''+long2hex(rsa_pubexp)+'''\\", \\"n\\": \\"'''+long2hex(rsa_mod)+'''\\"}, \\"cmdID\\": 1, \\"verifyCode\\": \\"\\", \\"peerID\\": \\""$peerid"\\", \\"protocolVersion\\": 101, \\"platformVersion\\": 1, \\"passWord\\": \\""$pwd"\\", \\"extensionList\\": \\"\\", \\"verifyKey\\": \\"\\"}" --no-check-certificate -O -`
+        session=`echo $ret|grep -oP "sessionID\\"\s*:\s*\\"([\dA-F]{32})\\""|grep -oP "([\dA-F]{32})"`
+        uid=`echo $ret|grep -oP "userID\\"\s*:\s*(\d+)"|grep -oP "\d+"`
         wget "http://api.swjsq.vip.xunlei.com/v2/upgrade?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session" -O -
         i=0
     fi
