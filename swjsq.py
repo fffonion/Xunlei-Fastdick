@@ -321,6 +321,8 @@ if __name__ == '__main__':
     try:
         if os.path.exists(account_file_plain):
             uid, pwd = open(account_file_plain).read().strip().split(',')
+            if sys.version.startswith('3'):
+                pwd = pwd.encode('utf-8')
             fast_d1ck(uid, hashlib.md5(pwd).hexdigest(), TYPE_NORMAL_ACCOUNT)
         elif os.path.exists(account_file_encrypted):
             uid, pwd_md5 = open(account_file_encrypted).read().strip().split(',')
