@@ -16,7 +16,8 @@ if hasattr(ssl, '_create_unverified_context') and hasattr(ssl, '_create_default_
 
 rsa_mod = 0xD6F1CFBF4D9F70710527E1B1911635460B1FF9AB7C202294D04A6F135A906E90E2398123C234340A3CEA0E5EFDCB4BCF7C613A5A52B96F59871D8AB9D240ABD4481CCFD758EC3F2FDD54A1D4D56BFFD5C4A95810A8CA25E87FDC752EFA047DF4710C7D67CA025A2DC3EA59B09A9F2E3A41D4A7EFBB31C738B35FFAAA5C6F4E6F
 rsa_pubexp = 0x010001
-if sys.version.startswith('2'):
+PY3K = sys.version.startswith('3')
+if not PY3K:
     import urllib2
     from cStringIO import StringIO as sio
     rsa_pubexp = long(rsa_pubexp)
@@ -68,7 +69,12 @@ except ImportError:
 else:
     cipher = RSA.construct((rsa_mod, rsa_pubexp))
     def rsa_encode(s):
-        return binascii.hexlify(cipher.encrypt(s, None)[0]).upper()
+        if PY3K and isinstance(s, str):
+            s = s.encode("utf-8")
+        _ = binascii.hexlify(cipher.encrypt(s, None)[0]).upper()
+        if PY3K:
+            _ = _.decode("utf-8")
+        return _
 
 
 TYPE_NORMAL_ACCOUNT = 0
@@ -321,7 +327,7 @@ if __name__ == '__main__':
     try:
         if os.path.exists(account_file_plain):
             uid, pwd = open(account_file_plain).read().strip().split(',')
-            if sys.version.startswith('3'):
+            if PY3K:
                 pwd = pwd.encode('utf-8')
             fast_d1ck(uid, hashlib.md5(pwd).hexdigest(), TYPE_NORMAL_ACCOUNT)
         elif os.path.exists(account_file_encrypted):
