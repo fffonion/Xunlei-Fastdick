@@ -6,7 +6,7 @@
 * 买买买 http://pay.vip.xunlei.com/baijin.html
 * $ git clone git@github.com:fffonion/Xunlei-FastDick.git && cd Xunlei-FastDick
 * 新建 __swjsq.account.txt__，填入`用户名,密码`，如`ahaha,123456`，并保存
-* Python 2.x or Python3.x
+* Python 2.x or Python3.x (Python3.x没有支持生成ipk包，所以会报一个错（因为作者比较懒
 * $ nohup python ./swjsq.py &
 
 # 说明
