@@ -160,9 +160,17 @@ def login_xunlei(uname, pwd_md5, login_type = TYPE_NORMAL_ACCOUNT):
     )
     return json.loads(ct)
 
+def api_url():
+    portal = json.loads(http_req("http://api.portal.swjsq.vip.xunlei.com:81/v2/queryportal"))
+    if portal['errno']:
+        print('Error: get interface_ip failed')
+        os._exit(3)
+    return portal['interface_ip']
+API_URL = api_url()
 
 def api(cmd, uid, session_id = ''):
-    url = 'http://api.swjsq.vip.xunlei.com/v2/%s?peerid=%s&userid=%s&user_type=1%s' % (
+    url = 'http://%s/v2/%s?peerid=%s&userid=%s&user_type=1%s' % (
+            API_URL,
             cmd,
             MAC,
             uid,
