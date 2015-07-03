@@ -165,7 +165,7 @@ def api_url():
     if portal['errno']:
         print('Error: get interface_ip failed')
         os._exit(3)
-    return portal['interface_ip']
+    return '%s:%s' % (portal['interface_ip'], portal['interface_port'])
 API_URL = api_url()
 
 def api(cmd, uid, session_id = ''):
@@ -251,6 +251,10 @@ pwd='''+rsa_encode(pwd)+'''
 nic=eth0
 peerid='''+MAC+'''
 
+portal=`wget http://api.portal.swjsq.vip.xunlei.com:81/v2/queryportal -O -`
+portal_ip=`echo $portal|grep -oP "((?:\d+\.){3}\d+)"`
+portal_port=`echo $portal|grep -oP "port\\":\\"(\d+)" | grep -oP "(\d+)"`
+api_url="http://$portal_ip:$portal_port/v2"
 i=6
 while true
 do
@@ -259,11 +263,11 @@ do
         ret=`wget https://login.mobile.reg2t.sandai.net:443/ --post-data="{\\"userName\\": \\""$uid"\\", \\"businessType\\": 68, \\"clientVersion\\": \\"1.1\\", \\"appName\\": \\"ANDROID-com.xunlei.vip.swjsq\\", \\"isCompressed\\": 0, \\"sequenceNo\\": 1000001, \\"sessionID\\": \\"\\", \\"loginType\\": 1, \\"rsaKey\\": {\\"e\\": \\"'''+long2hex(rsa_pubexp)+'''\\", \\"n\\": \\"'''+long2hex(rsa_mod)+'''\\"}, \\"cmdID\\": 1, \\"verifyCode\\": \\"\\", \\"peerID\\": \\""$peerid"\\", \\"protocolVersion\\": 101, \\"platformVersion\\": 1, \\"passWord\\": \\""$pwd"\\", \\"extensionList\\": \\"\\", \\"verifyKey\\": \\"\\"}" --no-check-certificate -O -`
         session=`echo $ret|grep -oP "sessionID\\"\s*:\s*\\"([\dA-F]{32})\\""|grep -oP "([\dA-F]{32})"`
         uid=`echo $ret|grep -oP "userID\\"\s*:\s*(\d+)"|grep -oP "\d+"`
-        wget "http://api.swjsq.vip.xunlei.com/v2/upgrade?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session" -O -
+        wget "$api_url/upgrade?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session" -O -
         i=0
     fi
     sleep 1
-    wget "http://api.swjsq.vip.xunlei.com/v2/keepalive?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session" -O -
+    wget "$api_url/keepalive?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session" -O -
     let i=i+1
     sleep 300
 done
