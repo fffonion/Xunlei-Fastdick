@@ -16,13 +16,13 @@
 * 进入目录，`$ python ./swjsq.py`
 * 安装生成的swjsq_0.0.1_all.ipk，安装后，路由 /tmp/bin 目录将有 swjsq 文件
 * 将swjsq移到/data/usr/bin,测试运行一次看能否提速，然后加入到PATH：
-     `export PATH=$PATH:/data/usr/bin`
-     `echo 'export PATH=$PATH:/data/usr/bin' >> /etc/profile`
+     1.`export PATH=$PATH:/data/usr/bin`
+     2.`echo 'export PATH=$PATH:/data/usr/bin' >> /etc/profile`
 * 设置自启动
      `vi /etc/init.d/usb_deploy_init_script.sh`
 	 找到以下两行：
-	 `rm -rf /tmp/xiaomi_router`
-     `mkdir -p /tmp/xiaomi_router`
+	 1.`rm -rf /tmp/xiaomi_router`
+     2.`mkdir -p /tmp/xiaomi_router`
      在下面加入一行命令`/data/usr/swjsq`
 * 重启，稍等几分钟，ssh到路由，使用ps命令查看swjsq是否正常启动，提速是否成功。
 
