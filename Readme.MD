@@ -24,7 +24,7 @@
 	 `rm -rf /tmp/xiaomi_router`
      `mkdir -p /tmp/xiaomi_router`
      在下面加入一行命令`/data/usr/swjsq`
-* 重启，稍等几分钟，shh到路由，使用ps命令查看swjsq是否正常启动，提速是否成功。
+* 重启，稍等几分钟，ssh到路由，使用ps命令查看swjsq是否正常启动，提速是否成功。
 
 # 说明
 * 明文存储的密码将会在第一次登陆成功后保存为数字ID和密码的MD5，明文文件将会删除
