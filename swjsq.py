@@ -272,7 +272,7 @@ do
     sleep 1
     wget "$api_url/keepalive?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session" -O -
     let i=i+1
-    sleep 300
+    sleep 270
 done
 
 
