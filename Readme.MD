@@ -15,16 +15,13 @@
 * 将项目文件通过winscp拷贝到路由临时文件夹，同目录下新建 __swjsq.account.txt__，填入`用户名,密码`，如`ahaha,123456`，并保存
 * 进入目录，`$ python ./swjsq.py`
 * 安装生成的swjsq_0.0.1_all.ipk，安装后，路由 /tmp/bin 目录将有 swjsq 文件
-* 将swjsq移到/data/usr/bin,测试运行一次看能否提速，然后加入到PATH：
-     1.`export PATH=$PATH:/data/usr/bin`
-     2.`echo 'export PATH=$PATH:/data/usr/bin' >> /etc/profile`
+* 将swjsq移到/data/usr/bin,测试运行一次看能否提速
 * 设置自启动
-     `vi /etc/init.d/usb_deploy_init_script.sh`
-	 找到以下两行：
-	 1.`rm -rf /tmp/xiaomi_router`
-     2.`mkdir -p /tmp/xiaomi_router`
-     在下面加入一行命令`/data/usr/swjsq`
+     `vi /etc/rc.local`
+	 在exit0语句之前加上：
+     `nohup /data/usr/bin/swjsq >/dev/null 2>&1 &`
 * 重启，稍等几分钟，ssh到路由，使用ps命令查看swjsq是否正常启动，提速是否成功。
+* 升级路由器固件后，需要重新设置自启动，swjsq一般不需要重新设置，请注意备份swjsq文件。
 
 # 说明
 * 明文存储的密码将会在第一次登陆成功后保存为数字ID和密码的MD5，明文文件将会删除
