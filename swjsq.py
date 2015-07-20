@@ -250,7 +250,7 @@ uid='''+str(uid)+'''
 pwd='''+rsa_encode(pwd)+'''
 nic=eth0
 peerid='''+MAC+'''
-uid_orig=uid
+uid_orig=$uid
 
 portal=`wget http://api.portal.swjsq.vip.xunlei.com:81/v2/queryportal -O -`
 portal_ip=`echo $portal|grep -oE '([0-9]{1,3}[\.]){3}[0-9]{1,3}'`
@@ -281,7 +281,7 @@ do
         uid_temp=`echo $ret|grep -oE "userID..[0-9]{9}"`
 	 uid=`echo $uid_temp|grep -oE "[0-9]{9}"`
         i=0
-	 if [ -z "$session" ]
+	  if [ -z "$session" ]
         then
               echo "session is empty"
 	       i=5
@@ -289,13 +289,12 @@ do
               echo "session is $session"
         fi
 
-        if [ -z "$uid" ]
+      if [ -z "$uid" ]
         then
 	        echo "uid is empty"
-			uid=uid_orig
+			uid=$uid_orig
         else
-            echo "uid is $uid"
-			
+            echo "uid is $uid"			
         fi
         wget "$api_url/upgrade?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session" -O -		
 
