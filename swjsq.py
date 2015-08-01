@@ -112,7 +112,7 @@ def get_mac(nic = '', to_splt = ':'):
                 return _[0].replace(splt, to_splt)
     except:
         pass
-    return ret
+    return '000000000000004V'
 
 MAC = get_mac(to_splt = '').upper() + '004V'
 
