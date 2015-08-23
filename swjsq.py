@@ -252,7 +252,7 @@ nic=eth0
 peerid='''+MAC+'''
 uid_orig=$uid
 
-portal=`wget http://api.portal.swjsq.vip.xunlei.com:81/v2/queryportal -O -`
+portal=`curl http://api.portal.swjsq.vip.xunlei.com:81/v2/queryportal`
 portal_ip=`echo $portal|grep -oE '([0-9]{1,3}[\.]){3}[0-9]{1,3}'`
 portal_port_temp=`echo $portal|grep -oE "port...[0-9]{1,5}"`
 portal_port=`echo $portal_port_temp|grep -oE '[0-9]{1,5}'`
@@ -260,7 +260,7 @@ api_url="http://$portal_ip:$portal_port/v2"
 if [ -z "$portal_ip" ]
   then
 	 sleep 30
-	 portal=`wget http://api.portal.swjsq.vip.xunlei.com:81/v2/queryportal -O -`
+	 portal=`curl http://api.portal.swjsq.vip.xunlei.com:81/v2/queryportal`
      portal_ip=`echo $portal|grep -oE '([0-9]{1,3}[\.]){3}[0-9]{1,3}'`
      portal_port_temp=`echo $portal|grep -oE "port...[0-9]{1,5}"`
      portal_port=`echo $portal_port_temp|grep -oE '[0-9]{1,5}'`
@@ -275,7 +275,7 @@ while true
 do
     if test $i -ge 6
     then
-        ret=`wget https://login.mobile.reg2t.sandai.net:443/ --post-data="{\\"userName\\": \\""$uid"\\", \\"businessType\\": 68, \\"clientVersion\\": \\"1.1\\", \\"appName\\": \\"ANDROID-com.xunlei.vip.swjsq\\", \\"isCompressed\\": 0, \\"sequenceNo\\": 1000001, \\"sessionID\\": \\"\\", \\"loginType\\": 1, \\"rsaKey\\": {\\"e\\": \\"'''+long2hex(rsa_pubexp)+'''\\", \\"n\\": \\"'''+long2hex(rsa_mod)+'''\\"}, \\"cmdID\\": 1, \\"verifyCode\\": \\"\\", \\"peerID\\": \\""$peerid"\\", \\"protocolVersion\\": 101, \\"platformVersion\\": 1, \\"passWord\\": \\""$pwd"\\", \\"extensionList\\": \\"\\", \\"verifyKey\\": \\"\\"}" --no-check-certificate -O -`
+        ret=`curl -k --data "{\\"userName\\": \\""$uid"\\", \\"businessType\\": 68, \\"clientVersion\\": \\"1.1\\", \\"appName\\": \\"ANDROID-com.xunlei.vip.swjsq\\", \\"isCompressed\\": 0, \\"sequenceNo\\": 1000001, \\"sessionID\\": \\"\\", \\"loginType\\": 1, \\"rsaKey\\": {\\"e\\": \\"'''+long2hex(rsa_pubexp)+'''\\", \\"n\\": \\"'''+long2hex(rsa_mod)+'''\\"}, \\"cmdID\\": 1, \\"verifyCode\\": \\"\\", \\"peerID\\": \\""$peerid"\\", \\"protocolVersion\\": 101, \\"platformVersion\\": 1, \\"passWord\\": \\""$pwd"\\", \\"extensionList\\": \\"\\", \\"verifyKey\\": \\"\\"}" https://login.mobile.reg2t.sandai.net:443/`
         session_temp=`echo $ret|grep -oE "sessionID...[A-F,0-9]{32}"`
 	 session=`echo $session_temp|grep -oE "[A-F,0-9]{32}"`
         uid_temp=`echo $ret|grep -oE "userID..[0-9]{9}"`
@@ -296,11 +296,10 @@ do
         else
             echo "uid is $uid"			
         fi
-        wget "$api_url/upgrade?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session" -O -		
-
+        curl "$api_url/upgrade?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session"		
     fi
     sleep 1
-    wget "$api_url/keepalive?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session" -O -
+    curl "$api_url/keepalive?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session"
     let i=i+1
     sleep 270
 done
