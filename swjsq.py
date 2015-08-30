@@ -1,4 +1,4 @@
-
+from __future__ import print_function
 import os
 import re
 import sys
@@ -208,15 +208,26 @@ def fast_d1ck(uname, pwd, login_type, save = True):
         print('Error: can not upgrade, so sad TAT %s' % _['message'])
         os._exit(3)
 
-    print('To Upgrade: %s%s Down %dM -> %dM, Up %dM -> %dM' % (
-        _['province_name'], _['sp_name'],
-        _['bandwidth']['downstream']/1024,
-        _['max_bandwidth']['downstream']/1024,
-        _['bandwidth']['upstream']/1024,
-        _['max_bandwidth']['upstream']/1024,
+    print("To Upgrade: ", end = '')
+    try:
+        print('%s%s ' % ( _['province_name'], _['sp_name']), end = '')
+    except UnicodeEncodeError:
+        pass
+    print('Down %dM -> %dM, Up %dM -> %dM' % (
+            _['bandwidth']['downstream']/1024,
+            _['max_bandwidth']['downstream']/1024,
+            _['bandwidth']['upstream']/1024,
+            _['max_bandwidth']['upstream']/1024,
     ))
+        
     #print(_)
-    atexit.register(lambda: api('recover', dt['userID'], dt['sessionID']))
+    def _atexit_func():
+        print("Sending recover request")
+        try:
+            api('recover', dt['userID'], dt['sessionID'])
+        except KeyboardInterrupt:
+            print('Secondary ctrl+c pressed, exiting')
+    atexit.register(_atexit_func)
     i = 0
     while True:
         try:
@@ -246,13 +257,24 @@ def fast_d1ck(uname, pwd, login_type, save = True):
 def make_wget_script(uid, pwd):
     open(shell_file, 'w').write(
 '''#!/bin/ash
+TEST_URL="https://baidu.com"
+if [ -z "`wget -O - $TEST_URL 2>&1|grep "not an http"`" ]
+   then
+   HTTP_REQ="wget --no-check-certificate -O - "
+   POST_ARG="--post-data="
+else
+   command -v curl >/dev/null 2>&1 && curl -kI $TEST_URL >/dev/null 2>&1 || { echo >&2 "Xunlei-FastD1ck cannot find wget or curl installed with https(ssl) enabled in this system."; exit 1; }
+   HTTP_REQ="curl -ks"
+   POST_ARG="--data "
+fi
+
 uid='''+str(uid)+'''
 pwd='''+rsa_encode(pwd)+'''
 nic=eth0
 peerid='''+MAC+'''
 uid_orig=$uid
 
-portal=`wget http://api.portal.swjsq.vip.xunlei.com:81/v2/queryportal -O -`
+portal=`$HTTP_REQ http://api.portal.swjsq.vip.xunlei.com:81/v2/queryportal`
 portal_ip=`echo $portal|grep -oE '([0-9]{1,3}[\.]){3}[0-9]{1,3}'`
 portal_port_temp=`echo $portal|grep -oE "port...[0-9]{1,5}"`
 portal_port=`echo $portal_port_temp|grep -oE '[0-9]{1,5}'`
@@ -260,7 +282,7 @@ api_url="http://$portal_ip:$portal_port/v2"
 if [ -z "$portal_ip" ]
   then
 	 sleep 30
-	 portal=`wget http://api.portal.swjsq.vip.xunlei.com:81/v2/queryportal -O -`
+	 portal=`$HTTP_REQ http://api.portal.swjsq.vip.xunlei.com:81/v2/queryportal`
      portal_ip=`echo $portal|grep -oE '([0-9]{1,3}[\.]){3}[0-9]{1,3}'`
      portal_port_temp=`echo $portal|grep -oE "port...[0-9]{1,5}"`
      portal_port=`echo $portal_port_temp|grep -oE '[0-9]{1,5}'`
@@ -275,7 +297,7 @@ while true
 do
     if test $i -ge 6
     then
-        ret=`wget https://login.mobile.reg2t.sandai.net:443/ --post-data="{\\"userName\\": \\""$uid"\\", \\"businessType\\": 68, \\"clientVersion\\": \\"1.1\\", \\"appName\\": \\"ANDROID-com.xunlei.vip.swjsq\\", \\"isCompressed\\": 0, \\"sequenceNo\\": 1000001, \\"sessionID\\": \\"\\", \\"loginType\\": 1, \\"rsaKey\\": {\\"e\\": \\"'''+long2hex(rsa_pubexp)+'''\\", \\"n\\": \\"'''+long2hex(rsa_mod)+'''\\"}, \\"cmdID\\": 1, \\"verifyCode\\": \\"\\", \\"peerID\\": \\""$peerid"\\", \\"protocolVersion\\": 101, \\"platformVersion\\": 1, \\"passWord\\": \\""$pwd"\\", \\"extensionList\\": \\"\\", \\"verifyKey\\": \\"\\"}" --no-check-certificate -O -`
+        ret=`$HTTP_REQ https://login.mobile.reg2t.sandai.net:443/ $POST_ARG"{\\"userName\\": \\""$uid"\\", \\"businessType\\": 68, \\"clientVersion\\": \\"1.1\\", \\"appName\\": \\"ANDROID-com.xunlei.vip.swjsq\\", \\"isCompressed\\": 0, \\"sequenceNo\\": 1000001, \\"sessionID\\": \\"\\", \\"loginType\\": 1, \\"rsaKey\\": {\\"e\\": \\"'''+long2hex(rsa_pubexp)+'''\\", \\"n\\": \\"'''+long2hex(rsa_mod)+'''\\"}, \\"cmdID\\": 1, \\"verifyCode\\": \\"\\", \\"peerID\\": \\""$peerid"\\", \\"protocolVersion\\": 101, \\"platformVersion\\": 1, \\"passWord\\": \\""$pwd"\\", \\"extensionList\\": \\"\\", \\"verifyKey\\": \\"\\"}"`
         session_temp=`echo $ret|grep -oE "sessionID...[A-F,0-9]{32}"`
 	 session=`echo $session_temp|grep -oE "[A-F,0-9]{32}"`
         uid_temp=`echo $ret|grep -oE "userID..[0-9]{9}"`
@@ -296,11 +318,11 @@ do
         else
             echo "uid is $uid"			
         fi
-        wget "$api_url/upgrade?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session" -O -		
+        $HTTP_REQ "$api_url/upgrade?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session"
 
     fi
     sleep 1
-    wget "$api_url/keepalive?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session" -O -
+    $HTTP_REQ "$api_url/keepalive?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session"
     let i=i+1
     sleep 270
 done
