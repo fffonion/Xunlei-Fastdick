@@ -212,7 +212,7 @@ def fast_d1ck(uname, pwd, login_type, save = True):
     try:
         print('%s%s ' % ( _['province_name'], _['sp_name']), end = '')
     except UnicodeEncodeError:
-        pass
+        print('%s %s ' % ( _['province'], _['sp']), end = '')
     print('Down %dM -> %dM, Up %dM -> %dM' % (
             _['bandwidth']['downstream']/1024,
             _['max_bandwidth']['downstream']/1024,
