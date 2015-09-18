@@ -256,7 +256,6 @@ portal=`curl http://api.portal.swjsq.vip.xunlei.com:81/v2/queryportal`
 portal_ip=`echo $portal|grep -oE '([0-9]{1,3}[\.]){3}[0-9]{1,3}'`
 portal_port_temp=`echo $portal|grep -oE "port...[0-9]{1,5}"`
 portal_port=`echo $portal_port_temp|grep -oE '[0-9]{1,5}'`
-api_url="http://$portal_ip:$portal_port/v2"
 if [ -z "$portal_ip" ]
   then
 	 sleep 30
@@ -270,6 +269,7 @@ if [ -z "$portal_ip" ]
 	         portal_port=80
 	 fi
 fi
+api_url="http://$portal_ip:$portal_port/v2"
 i=6
 while true
 do
