@@ -65,7 +65,7 @@ except ImportError:
     @cached
     def rsa_encode(data):
         result = modpow(str_to_int(data), rsa_pubexp, rsa_mod)
-        return hex(result).upper()[2:].rstrip('L').upper()
+        return "{0:0256X}".format(result) # length should be 1024bit, hard coded here
 else:
     cipher = RSA.construct((rsa_mod, rsa_pubexp))
     def rsa_encode(s):
