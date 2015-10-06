@@ -246,7 +246,10 @@ def fast_d1ck(uname, pwd, login_type, save = True):
                 _ = api('keepalive', dt['userID'], dt['sessionID'])
             if _['errno']:
                 print('Error: %s' % _['message'])
-                time.sleep(300)#os._exit(4) 
+                if errno == 513:# TEST: re-upgrade when get 'not exist channel'
+                    i = 0
+                else:
+                    time.sleep(300)#os._exit(4) 
         except Exception as ex:
             import traceback
             _ = traceback.format_exc()
