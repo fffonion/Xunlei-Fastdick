@@ -326,9 +326,14 @@ do
 
     fi
     sleep 1
-    $HTTP_REQ "$api_url/keepalive?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session"
-    let i=i+1
-    sleep 270
+    ret=`$HTTP_REQ "$api_url/keepalive?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session"`
+    if [ ! -z "`echo $ret|grep "not exist channel"`" ]
+    then
+        i=0
+    else
+        let i=i+1
+        sleep 270
+    fi
 done
 
 
