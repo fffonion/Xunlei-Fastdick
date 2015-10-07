@@ -262,7 +262,7 @@ def make_wget_script(uid, pwd):
     open(shell_file, 'w').write(
 '''#!/bin/ash
 TEST_URL="https://baidu.com"
-if [ -z "`wget -O - $TEST_URL 2>&1|grep "not an http"`" ]
+if [ ! -z "`wget -O - $TEST_URL 2>&1|grep "100%"`" ]
    then
    HTTP_REQ="wget --no-check-certificate -O - "
    POST_ARG="--post-data="
