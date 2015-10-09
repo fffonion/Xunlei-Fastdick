@@ -310,7 +310,9 @@ do
 	  if [ -z "$session" ]
         then
               echo "session is empty"
-	       i=5
+              i=6
+              sleep 5
+              continue
         else
               echo "session is $session"
         fi
@@ -329,7 +331,7 @@ do
     ret=`$HTTP_REQ "$api_url/keepalive?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session"`
     if [ ! -z "`echo $ret|grep "not exist channel"`" ]
     then
-        i=0
+        i=6
     else
         let i=i+1
         sleep 270
