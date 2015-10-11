@@ -248,6 +248,7 @@ def fast_d1ck(uname, pwd, login_type, save = True):
                 print('Error: %s' % _['message'])
                 if _['errno'] == 513:# TEST: re-upgrade when get 'not exist channel'
                     i = 0
+                    continue
                 else:
                     time.sleep(300)#os._exit(4) 
         except Exception as ex:
