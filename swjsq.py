@@ -175,7 +175,7 @@ def api(cmd, uid, session_id = ''):
             cmd,
             MAC,
             uid,
-            ('sessionid=%s' % session_id) if session_id else ''
+            ('&sessionid=%s' % session_id) if session_id else ''
     )
     return json.loads(http_req(url, headers = header_api))
 
