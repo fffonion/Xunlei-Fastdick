@@ -186,7 +186,7 @@ def fast_d1ck(uname, pwd, login_type, save = True):
 
     dt = login_xunlei(uname, pwd, login_type)
     if 'sessionID' not in dt:
-        print('Error: login failed, %s' % dt['errorDesc'])
+        print('Error: login failed, %s' % dt['errorDesc'].encode('utf-8'))
         os._exit(1)
     elif 'isVip' not in dt or not dt['isVip']:
         print('Error: you are not xunlei vip, buy buy buy! http://vip.xunlei.com/')
@@ -206,7 +206,7 @@ def fast_d1ck(uname, pwd, login_type, save = True):
 
     _ = api('bandwidth', dt['userID'])
     if not _['can_upgrade']:
-        print('Error: can not upgrade, so sad TAT %s' % _['message'])
+        print('Error: can not upgrade, so sad TAT %s' % _['message'].encode('utf-8'))
         os._exit(3)
 
     print("To Upgrade: ", end = '')
