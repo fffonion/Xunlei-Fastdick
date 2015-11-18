@@ -255,7 +255,11 @@ def fast_d1ck(uname, pwd, login_type, save = True):
             import traceback
             _ = traceback.format_exc()
             print(_)
-        open('swjsq.log', 'a').write('%s %s\n' % (time.strftime('%X', time.localtime(time.time())), _))
+        with open('swjsq.log', 'a') as f:
+            try:
+                f.write('%s %s\n' % (time.strftime('%X', time.localtime(time.time())), _))
+            except UnicodeEncodeError:
+                f.write('%s keepalive\n' % (time.strftime('%X', time.localtime(time.time()))))
         i+=1
         time.sleep(270)#5 min
 
