@@ -167,7 +167,12 @@ def api_url():
         print('Error: get interface_ip failed')
         os._exit(3)
     return '%s:%s' % (portal['interface_ip'], portal['interface_port'])
-API_URL = api_url()
+
+def setup():
+    global MAC
+    global API_URL
+    MAC = get_mac(to_splt = '').upper() + '004V'
+    API_URL = api_url()
 
 def api(cmd, uid, session_id = ''):
     url = 'http://%s/v2/%s?peerid=%s&userid=%s&user_type=1%s' % (
@@ -407,6 +412,7 @@ Description:  Xunlei Fast Dick
 
 
 if __name__ == '__main__':
+    setup()
     try:
         if os.path.exists(account_file_plain):
             uid, pwd = open(account_file_plain).read().strip().split(',')
