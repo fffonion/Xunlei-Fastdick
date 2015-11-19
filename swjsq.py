@@ -115,8 +115,6 @@ def get_mac(nic = '', to_splt = ':'):
         pass
     return '000000000000004V'
 
-MAC = get_mac(to_splt = '').upper() + '004V'
-
 
 def long2hex(l):
     return hex(l)[2:].upper().rstrip('L')
