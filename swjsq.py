@@ -81,6 +81,8 @@ else:
 TYPE_NORMAL_ACCOUNT = 0
 TYPE_NUM_ACCOUNT = 1
 
+UNICODE_WARNING_SHOWN = False
+
 header_xl = {
     'Content-Type':'',
     'Connection': 'Keep-Alive',
@@ -118,6 +120,25 @@ def get_mac(nic = '', to_splt = ':'):
 
 def long2hex(l):
     return hex(l)[2:].upper().rstrip('L')
+
+
+def uprint(s, fallback = None, end = None):
+    global UNICODE_WARNING_SHOWN
+    while True:
+        try:
+            print(s, end = end)
+        except UnicodeEncodeError:
+            if UNICODE_WARNING_SHOWN:
+                print('Warning: locale of your system may not be utf8 compatible, output will be truncated')
+                UNICODE_WARNING_SHOWN = True
+        else:
+            break
+        try:
+            print(s.encode('utf-8'), end = end)
+        except UnicodeEncodeError:
+            if fallback:
+                print(fallback, end = end)
+        break
 
 def http_req(url, headers = {}, body = None, encoding = 'utf-8'):
     req = urllib2.Request(url)
@@ -189,7 +210,7 @@ def fast_d1ck(uname, pwd, login_type, save = True):
 
     dt = login_xunlei(uname, pwd, login_type)
     if 'sessionID' not in dt:
-        print('Error: login failed, %s' % dt['errorDesc'].encode('utf-8'))
+        uprint('Error: login failed, %s' % dt['errorDesc'], 'Error: login failed')
         os._exit(1)
     elif 'isVip' not in dt or not dt['isVip']:
         print('Error: you are not xunlei vip, buy buy buy! http://vip.xunlei.com/')
@@ -209,14 +230,14 @@ def fast_d1ck(uname, pwd, login_type, save = True):
 
     _ = api('bandwidth', dt['userID'])
     if not _['can_upgrade']:
-        print('Error: can not upgrade, so sad TAT %s' % _['message'].encode('utf-8'))
+        uprint('Error: can not upgrade, so sad TAT %s' % _['message'], 'Error: can not upgrade, so sad TAT')
         os._exit(3)
 
     print("To Upgrade: ", end = '')
-    try:
-        print('%s%s ' % ( _['province_name'], _['sp_name']), end = '')
-    except UnicodeEncodeError:
-        print('%s %s ' % ( _['province'], _['sp']), end = '')
+    uprint('%s%s ' % ( _['province_name'], _['sp_name']),
+            '%s %s ' % ( _['province'], _['sp']),
+            end = ''
+          )
     print('Down %dM -> %dM, Up %dM -> %dM' % (
             _['bandwidth']['downstream']/1024,
             _['max_bandwidth']['downstream']/1024,
