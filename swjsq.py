@@ -214,7 +214,11 @@ def fast_d1ck(uname, pwd, login_type, save = True):
         os._exit(1)
     elif ('isVip' not in dt or not dt['isVip']) and ('payId' not in dt or dt['payId'] != 702):
         #FIX ME: rewrite if with payId
-        print('Error: you are not xunlei vip, buy buy buy! http://vip.xunlei.com/')
+        print('Error: you are not xunlei vip, buy buy buy! http://vip.xunlei.com/\n[Debug] isVip:%s payId:%s payName:%s' % (
+          'None' if 'isVip' not in dt else dt['isVip'],
+          'None' if 'payId' not in dt else dt['payId'],
+          'None' if 'payName' not in dt else [dt['payName']]
+        ))
         os._exit(2)
     print('Login xunlei succeeded')
     if save:
