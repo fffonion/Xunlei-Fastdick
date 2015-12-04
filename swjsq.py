@@ -252,11 +252,12 @@ nic=eth0
 peerid='''+MAC+'''
 uid_orig=$uid
 
+day_of_month_orig=`date +%d`
+orig_day_of_month=`echo $day_of_month_orig|grep -oE "[1-9]{1,2}"`
 portal=`curl http://api.portal.swjsq.vip.xunlei.com:81/v2/queryportal`
 portal_ip=`echo $portal|grep -oE '([0-9]{1,3}[\.]){3}[0-9]{1,3}'`
 portal_port_temp=`echo $portal|grep -oE "port...[0-9]{1,5}"`
 portal_port=`echo $portal_port_temp|grep -oE '[0-9]{1,5}'`
-api_url="http://$portal_ip:$portal_port/v2"
 if [ -z "$portal_ip" ]
   then
 	 sleep 30
@@ -270,6 +271,7 @@ if [ -z "$portal_ip" ]
 	         portal_port=80
 	 fi
 fi
+api_url="http://$portal_ip:$portal_port/v2"
 i=6
 while true
 do
@@ -299,6 +301,16 @@ do
         curl "$api_url/upgrade?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session"		
     fi
     sleep 1
+	day_of_month_orig=`date +%d`
+    day_of_month=`echo $day_of_month_orig|grep -oE "[1-9]{1,2}"`
+    if [[ -z $orig_day_of_month || $day_of_month -ne $orig_day_of_month ]]
+     then
+       orig_day_of_month=$day_of_month
+       echo "$orig_day_of_month"
+       curl "$api_url/recover?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session"
+       i=5
+       sleep 5
+    fi
     curl "$api_url/keepalive?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session"
     let i=i+1
     sleep 270
