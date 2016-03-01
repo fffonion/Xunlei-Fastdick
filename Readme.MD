@@ -33,7 +33,7 @@ docker pull flier/xunlei-fastdick
 * 指定环境变量作为启动参数
 
 ```
-docker run -d --name=xunlei-fastdick --restart=always -e XUNLEI_UID=<uid> -e XUNLEI_PASSWD=<uid> flier/xunlei-fastdick
+docker run -d --name=xunlei-fastdick --restart=unless-stopped -e XUNLEI_UID=<uid> -e XUNLEI_PASSWD=<uid> flier/xunlei-fastdick
 ```
 
 # 说明
