@@ -249,7 +249,7 @@ def fast_d1ck(uname, pwd, login_type, save = True):
             _['bandwidth']['upstream']/1024,
             _['max_bandwidth']['upstream']/1024,
     ))
-        
+
     #print(_)
     def _atexit_func():
         print("Sending recover request")
@@ -279,7 +279,7 @@ def fast_d1ck(uname, pwd, login_type, save = True):
                     i = 0
                     continue
                 else:
-                    time.sleep(300)#os._exit(4) 
+                    time.sleep(300)#os._exit(4)
         except Exception as ex:
             import traceback
             _ = traceback.format_exc()
@@ -358,7 +358,7 @@ do
 	        echo "uid is empty"
 			uid=$uid_orig
         else
-            echo "uid is $uid"			
+            echo "uid is $uid"
         fi
         $HTTP_REQ "$api_url/upgrade?peerid=$peerid&userid=$uid&user_type=1&sessionid=$session"
 
@@ -456,10 +456,11 @@ if __name__ == '__main__':
         elif os.path.exists(account_file_encrypted):
             uid, pwd_md5 = open(account_file_encrypted).read().strip().split(',')
             fast_d1ck(uid, pwd_md5, TYPE_NUM_ACCOUNT, save = False)
+        elif 'XUNLEI_UID' in os.environ and 'XUNLEI_PASSWD' in os.environ:
+            uid = os.environ['XUNLEI_UID']
+            pwd = os.environ['XUNLEI_PASSWD']
+            fast_d1ck(uid, hashlib.md5(pwd).hexdigest(), TYPE_NORMAL_ACCOUNT)
         else:
-            print('Please create config file "%s", input account splitting with comma(,). Eg:\nyonghuming,mima' % account_file_plain)
+            print('Please use XUNLEI_UID=<uid>/XUNLEI_PASSWD=<pass> envrionment varibles or create config file "%s", input account splitting with comma(,). Eg:\nyonghuming,mima' % account_file_plain)
     except KeyboardInterrupt:
         pass
-
-    
-    
