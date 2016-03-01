@@ -5,4 +5,4 @@ RUN apt-get update && \
 
 COPY swjsq.py /
 
-CMD ["python", "/swjsq.py"]
+ENTRYPOINT ["python", "/swjsq.py"]

@@ -22,6 +22,17 @@
 * 重启，稍等几分钟，ssh到路由，使用ps命令查看swjsq是否正常启动，提速是否成功。
 * 升级路由器固件后，需要重新设置自启动，swjsq一般不需要重新设置，请注意备份swjsq文件。
 
+# Docker
+
+1. 下载最新 docker image
+
+指定环境变量(XUNLEI_UID|XUNLEI_PASSWD)作为启动参数
+
+```bash
+docker pull flier/xunlei-fastdick
+docker run -d --name=xunlei-fastdick -e XUNLEI_UID=<uid> -e XUNLEI_PASSWD=<uid> flier/xunlei-fastdick
+```
+
 # 说明
 * Python版本可以为2.x或3.x(但是Python3.x没有支持生成ipk包，所以会报一个错（因为作者比较懒
 * 如果路由器硬件限制无法安装Python，也可以在PC上运行脚本，登陆成功后会生成`swjsq_wget.sh`以及一个ipk包，将生成的ipk安装进路由器即可；需要路由器安装**支持https的wget或curl**
