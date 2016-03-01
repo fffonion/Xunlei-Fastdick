@@ -24,13 +24,16 @@
 
 # Docker
 
-1. 下载最新 docker image
+* 下载最新 docker image
 
-指定环境变量(XUNLEI_UID|XUNLEI_PASSWD)作为启动参数
-
-```bash
+```
 docker pull flier/xunlei-fastdick
-docker run -d --name=xunlei-fastdick -e XUNLEI_UID=<uid> -e XUNLEI_PASSWD=<uid> flier/xunlei-fastdick
+```
+
+* 指定环境变量作为启动参数
+
+```
+docker run -d --name=xunlei-fastdick --restart=always -e XUNLEI_UID=<uid> -e XUNLEI_PASSWD=<uid> flier/xunlei-fastdick
 ```
 
 # 说明
@@ -44,4 +47,3 @@ docker run -d --name=xunlei-fastdick -e XUNLEI_UID=<uid> -e XUNLEI_PASSWD=<uid> 
 # TODO
 * session过期时间
 * web前端
-
