@@ -347,7 +347,8 @@ do
         then
               echo "session is empty"
               i=6
-              sleep 5
+              sleep 30
+              uid=$uid_orig
               continue
         else
               echo "session is $session"
