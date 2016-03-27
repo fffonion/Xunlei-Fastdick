@@ -1,7 +1,4 @@
-FROM python:2.7-slim
-
-RUN apt-get update && \
-    apt-get install -y net-tools
+FROM python:2.7-alpine
 
 COPY swjsq.py /
 
