@@ -228,9 +228,10 @@ def fast_d1ck(uname, pwd, login_type, save = True):
             pass
         with open(account_file_encrypted, 'w') as f:
             f.write('%s,%s' % (dt['userID'], pwd))
-    if not os.path.exists(shell_file):
+    _script_mtime = os.stat(os.path.realpath(__file__)).st_mtime
+    if not os.path.exists(shell_file) or os.stat(shell_file).st_mtime < _script_mtime:
         make_wget_script(dt['userID'], pwd)
-    if not os.path.exists(ipk_file):
+    if not os.path.exists(ipk_file) or os.stat(ipk_file).st_mtime < _script_mtime:
         update_ipk()
 
     _ = api('bandwidth', dt['userID'])
