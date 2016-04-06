@@ -389,9 +389,13 @@ done
 ''')
 
 def update_ipk():
-    #FIXME: 3.X compatibility
-    def get_sio(tar, name):
-        return sio(tar.extractfile(name).read())
+    def _sio(s = None):
+        if not s:
+            return sio()
+        if PY3K:
+            return sio(bytes(s, "ascii"))
+        else:
+            return sio(s)
 
     def flen(fobj):
         pos = fobj.tell()
@@ -414,7 +418,7 @@ def update_ipk():
 
     data_stream = sio()
     data_fobj = tarfile.open(fileobj = data_stream, mode = 'w:gz')
-    data_content = open(shell_file, 'r')
+    data_content = open(shell_file, 'rb')
     add_to_tar(data_fobj, './bin/swjsq', data_content)
     data_fobj.close()
     add_to_tar(ipk_fobj, './data.tar.gz', data_stream)
@@ -423,7 +427,7 @@ def update_ipk():
 
     control_stream = sio()
     control_fobj = tarfile.open(fileobj = control_stream, mode = 'w:gz')
-    control_content = sio('''Package: swjsq
+    control_content = _sio('''Package: swjsq
 Version: 0.0.1
 Depends: libc
 Source: none
@@ -441,7 +445,7 @@ Description:  Xunlei Fast Dick
     data_content.close()
     control_content.close()
 
-    debian_binary_stream = sio('2.0\n')
+    debian_binary_stream = _sio('2.0\n')
     add_to_tar(ipk_fobj, './debian-binary', debian_binary_stream)
     debian_binary_stream.close()
 
