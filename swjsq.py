@@ -294,7 +294,7 @@ def fast_d1ck(uname, pwd, login_type, save = True):
         time.sleep(270)#5 min
 
 def make_wget_script(uid, pwd):
-    open(shell_file, 'w').write(
+    open(shell_file, 'wb').write(
 '''#!/bin/ash
 TEST_URL="https://baidu.com"
 UA_XL="User-Agent: swjsq/0.0.1"
@@ -387,7 +387,7 @@ do
 done
 
 
-''')
+'''.replace("\r", ""))
 
 def update_ipk():
     def _sio(s = None):
