@@ -15,7 +15,7 @@ import atexit
 if hasattr(ssl, '_create_unverified_context') and hasattr(ssl, '_create_default_https_context'):
     ssl._create_default_https_context = ssl._create_unverified_context
 
-rsa_mod = 0xD6F1CFBF4D9F70710527E1B1911635460B1FF9AB7C202294D04A6F135A906E90E2398123C234340A3CEA0E5EFDCB4BCF7C613A5A52B96F59871D8AB9D240ABD4481CCFD758EC3F2FDD54A1D4D56BFFD5C4A95810A8CA25E87FDC752EFA047DF4710C7D67CA025A2DC3EA59B09A9F2E3A41D4A7EFBB31C738B35FFAAA5C6F4E6F
+rsa_mod = 0xAC69F5CCC8BDE47CD3D371603748378C9CFAD2938A6B021E0E191013975AD683F5CBF9ADE8BD7D46B4D2EC2D78AF146F1DD2D50DC51446BB8880B8CE88D476694DFC60594393BEEFAA16F5DBCEBE22F89D640F5336E42F587DC4AFEDEFEAC36CF007009CCCE5C1ACB4FF06FBA69802A8085C2C54BADD0597FC83E6870F1E36FD
 rsa_pubexp = 0x010001
 PY3K = sys.version.startswith('3')
 if not PY3K:
@@ -87,7 +87,7 @@ header_xl = {
     'Content-Type':'',
     'Connection': 'Keep-Alive',
     'Accept-Encoding': 'gzip',
-    'User-Agent': 'android-async-http/1.4.3 (http://loopj.com/android-async-http)'
+    'User-Agent': 'android-async-http/xl-acc-sdk/version-1.6.1.177600'
 }
 header_api = {
     'Content-Type':'',
@@ -154,14 +154,18 @@ def http_req(url, headers = {}, body = None, encoding = 'utf-8'):
 
 def login_xunlei(uname, pwd_md5, login_type = TYPE_NORMAL_ACCOUNT):
     pwd = rsa_encode(pwd_md5)
-    ct = http_req('https://login.mobile.reg2t.sandai.net:443/', body = json.dumps(
-        {
-            "protocolVersion": 101,
-            "sequenceNo": 1000001,
+    fake_device_id = hashlib.md5("%s23333" % pwd_md5).hexdigest() # just generate a 32bit string
+    # sign = div.10?.md5(sha1(packageName + businessType + md5(a protocolVersion specific GUID)))
+    device_sign = "div100.%s%s" % (fake_device_id, hashlib.md5(hashlib.sha1("%scom.xunlei.vip.swjsq68700d1872b772946a6940e4b51827e8af" % fake_device_id).hexdigest()).hexdigest())
+    _payload = json.dumps({
+            "protocolVersion": 108,# 109
+            "sequenceNo": 1000001, # TODO: autoincr when relogin
             "platformVersion": 1,
+            "sdkVersion": 177550,# 177600
             "peerID": MAC,
             "businessType": 68,
-            "clientVersion": "1.1",
+            "clientVersion": "2.0.3.4",# app version
+            "devicesign":device_sign,
             "isCompressed": 0,
             "cmdID": 1,
             "userName": uname,
@@ -172,13 +176,13 @@ def login_xunlei(uname, pwd_md5, login_type = TYPE_NORMAL_ACCOUNT):
             "verifyCode": "",
             "appName": "ANDROID-com.xunlei.vip.swjsq",
             "rsaKey": {
-                "e": long2hex(rsa_pubexp),
+                "e": "%06X" % rsa_pubexp,
                 "n": long2hex(rsa_mod)
             },
             "extensionList": ""
-        }), headers = header_xl, encoding = 'gbk'
-    )
-    return json.loads(ct)
+    })
+    ct = http_req('https://login.mobile.reg2t.sandai.net:443/', body = _payload, headers = header_xl, encoding = 'gbk')
+    return json.loads(ct), _payload
 
 def api_url():
     portal = json.loads(http_req("http://api.portal.swjsq.vip.xunlei.com:81/v2/queryportal"))
@@ -208,9 +212,10 @@ def fast_d1ck(uname, pwd, login_type, save = True):
         print('Error: sub account can not upgrade')
         os._exit(3)
 
-    dt = login_xunlei(uname, pwd, login_type)
+    dt, _payload = login_xunlei(uname, pwd, login_type)
     if 'sessionID' not in dt:
         uprint('Error: login failed, %s' % dt['errorDesc'], 'Error: login failed')
+        print(dt)
         os._exit(1)
     elif ('isVip' not in dt or not dt['isVip']) and ('payId' not in dt or dt['payId'] not in  [5, 702]):
         #FIX ME: rewrite if with payId
@@ -230,7 +235,7 @@ def fast_d1ck(uname, pwd, login_type, save = True):
             f.write('%s,%s' % (dt['userID'], pwd))
     _script_mtime = os.stat(os.path.realpath(__file__)).st_mtime
     if not os.path.exists(shell_file) or os.stat(shell_file).st_mtime < _script_mtime:
-        make_wget_script(dt['userID'], pwd)
+        make_wget_script(dt['userID'], pwd, _payload)
     if not os.path.exists(ipk_file) or os.stat(ipk_file).st_mtime < _script_mtime:
         update_ipk()
 
@@ -293,7 +298,7 @@ def fast_d1ck(uname, pwd, login_type, save = True):
         i+=1
         time.sleep(270)#5 min
 
-def make_wget_script(uid, pwd):
+def make_wget_script(uid, pwd, _payload):
     open(shell_file, 'wb').write(
 '''#!/bin/ash
 TEST_URL="https://baidu.com"
@@ -301,7 +306,7 @@ UA_XL="User-Agent: swjsq/0.0.1"
 
 if [ ! -z "`wget --no-check-certificate -O - $TEST_URL 2>&1|grep "100%"`" ]
    then
-   HTTP_REQ="wget --no-check-certificate -O - "
+   HTTP_REQ="wget -q --no-check-certificate -O - "
    POST_ARG="--post-data="
 else
    command -v curl >/dev/null 2>&1 && curl -kI $TEST_URL >/dev/null 2>&1 || { echo >&2 "Xunlei-FastD1ck cannot find wget or curl installed with https(ssl) enabled in this system."; exit 1; }
@@ -340,7 +345,7 @@ while true
 do
     if test $i -ge 6
     then
-        ret=`$HTTP_REQ https://login.mobile.reg2t.sandai.net:443/ $POST_ARG"{\\"userName\\": \\""$uid"\\", \\"businessType\\": 68, \\"clientVersion\\": \\"1.1\\", \\"appName\\": \\"ANDROID-com.xunlei.vip.swjsq\\", \\"isCompressed\\": 0, \\"sequenceNo\\": 1000001, \\"sessionID\\": \\"\\", \\"loginType\\": 1, \\"rsaKey\\": {\\"e\\": \\"'''+long2hex(rsa_pubexp)+'''\\", \\"n\\": \\"'''+long2hex(rsa_mod)+'''\\"}, \\"cmdID\\": 1, \\"verifyCode\\": \\"\\", \\"peerID\\": \\""$peerid"\\", \\"protocolVersion\\": 101, \\"platformVersion\\": 1, \\"passWord\\": \\""$pwd"\\", \\"extensionList\\": \\"\\", \\"verifyKey\\": \\"\\"}" --header $UA_XL`
+        ret=`$HTTP_REQ https://login.mobile.reg2t.sandai.net:443/ $POST_ARG"'''+_payload.replace('"','\\"')+'''" --header $UA_XL`
         session_temp=`echo $ret|grep -oE "sessionID...[A-F,0-9]{32}"`
 	 session=`echo $session_temp|grep -oE "[A-F,0-9]{32}"`
         uid_temp=`echo $ret|grep -oE "userID..[0-9]{9}"`
