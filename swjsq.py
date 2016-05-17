@@ -272,7 +272,7 @@ def fast_d1ck(uname, pwd, login_type, save = True):
                 if i:
                     api('recover', dt['userID'], dt['sessionID'])
                     time.sleep(5)
-                    dt = login_xunlei(uname, pwd, login_type)
+                    dt, _payload = login_xunlei(uname, pwd, login_type)
                 _ = api('upgrade', dt['userID'], dt['sessionID'])
                 #print(_)
                 if not _['errno']:
