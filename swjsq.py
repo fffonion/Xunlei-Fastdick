@@ -295,24 +295,36 @@ def fast_d1ck(uname, pwd, login_type, save = True):
     i = 0
     while True:
         try:
-            if i % 6 == 0:#30min
+            # i=1~17 keepalive, renew session, i++
+            # i=18 (3h) re-upgrade, i:=0
+            # i=100 login, i:=36
+            if i == 100:
+                dt, _payload = login_xunlei(uname, pwd, login_type)
+                i = 18
+            if i % 18 == 0:#3h
                 print('Initializing upgrade')
-                if i:
+                if i:# not first time
                     api('recover', dt['userID'], dt['sessionID'], extras = "dial_account=%s" % _dial_account)
                     time.sleep(5)
                 _ = api('upgrade', dt['userID'], dt['sessionID'], extras = "user_type=1&dial_account=%s" % _dial_account)
                 #print(_)
                 if not _['errno']:
                     print('Upgrade done: Down %dM, Up %dM' % (_['bandwidth']['downstream'], _['bandwidth']['upstream']))
+                    i = 0
             else:
-                renew_xunlei(dt['userID'], dt['sessionID'])
+                _dt_t, _paylod_t = renew_xunlei(dt['userID'], dt['sessionID'])
+                if _dt_t['errorCode']:
+                    i = 100
+                    continue
                 _ = api('keepalive', dt['userID'], dt['sessionID'])
             if _['errno']:
-                print('Error: %s' % _['message'])
+                print('Error %s: %s' % (_['errno'], _['message']))
                 if _['errno'] == 513:# TEST: re-upgrade when get 'not exist channel'
-                    i = 0
-                    dt, _payload = login_xunlei(uname, pwd, login_type)
+                    i = 100
                     continue
+                elif _['errno'] == 812:
+                    print('Already upgraded, continuing')
+                    i = 0
                 else:
                     time.sleep(300)#os._exit(4)
         except Exception as ex:
@@ -324,12 +336,13 @@ def fast_d1ck(uname, pwd, login_type, save = True):
                 f.write('%s %s\n' % (time.strftime('%X', time.localtime(time.time())), _))
             except UnicodeEncodeError:
                 f.write('%s keepalive\n' % (time.strftime('%X', time.localtime(time.time()))))
-        i+=1
-        time.sleep(270)#5 min
+        i += 1
+        time.sleep(590)#10 min
 
 def make_wget_script(uid, pwd, dial_account, _payload):
-    # i=1~5 keepalive, renew session, i++
-    # i=6 upgrade, re-login
+    # i=1~17 keepalive, renew session, i++
+    # i=18 (3h) re-upgrade, i:=0
+    # i=100 login, i:=18
     open(shell_file, 'wb').write(
 '''#!/bin/ash
 TEST_URL="https://baidu.com"
@@ -369,20 +382,20 @@ if [ -z "$portal_ip" ]; then
     fi
 fi
 api_url="http://$portal_ip:$portal_port/v2"
-i=10
+i=100
 while true; do
-    if test $i -ge 6; then
+    if test $i -ge 100; then
         echo "login xunlei"
         ret=`$HTTP_REQ https://login.mobile.reg2t.sandai.net:443/ $POST_ARG"'''+_payload.replace('"','\\"')+'''" --header "$UA_XL"`
         session_temp=`echo $ret|grep -oE "sessionID...[A-F,0-9]{32}"`
         session=`echo $session_temp|grep -oE "[A-F,0-9]{32}"`
         uid_temp=`echo $ret|grep -oE "userID..[0-9]{9}"`
         uid=`echo $uid_temp|grep -oE "[0-9]{9}"`
-        i=0
+        i=18
         if [ -z "$session" ]; then
             echo "session is empty"
-            i=6
-            sleep 30
+            i=100
+            sleep 60
             uid=$uid_orig
             continue
         else
@@ -390,13 +403,17 @@ while true; do
         fi
 
       if [ -z "$uid" ]; then
-          echo "uid is empty"
+          #echo "uid is empty"
           uid=$uid_orig
       else
           echo "uid is $uid"
       fi
+    fi
+    
+    if test $i -eq 18; then
       _ts=`date +%s`0000
       $HTTP_REQ "$api_url/upgrade?peerid=$peerid&userid=$uid&sessionid=$session&user_type=1&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"
+      i=0
     fi
 
     sleep 1
@@ -407,24 +424,24 @@ while true; do
        _ts=`date +%s`0000
        $HTTP_REQ "$api_url/recover?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"
        sleep 5
-       i=6
+       i=100
        continue
-	fi
+    fi
     
-    ret=`$HTTP_REQ https://login.mobile.reg2t.sandai.net:443/ $POST_ARG"{\\"protocolVersion\\":'''+PROTOCOL_VERSION+''',\\"sequenceNo\\":1000000,\\"platformVersion\\":1,\\"peerID\\":\\"$peerid\\",\\"businessType\\":68,\\"clientVersion\\":\\"'''+APP_VERSION+'''\\",\\"isCompressed\\":0,\\"cmdID\\":11,\\"userID\\":$uid,\\"sessionID\\":\\"$session\\"}" --header "$UA_XL"`
+    ret=`$HTTP_REQ https://login.mobile.reg2t.sandai.net:443/ $POST_ARG"{\\"protocolVersion\\":'''+str(PROTOCOL_VERSION)+''',\\"sequenceNo\\":1000000,\\"platformVersion\\":1,\\"peerID\\":\\"$peerid\\",\\"businessType\\":68,\\"clientVersion\\":\\"'''+APP_VERSION+'''\\",\\"isCompressed\\":0,\\"cmdID\\":11,\\"userID\\":$uid,\\"sessionID\\":\\"$session\\"}" --header "$UA_XL"`
     error_code=`echo $ret|grep -oE "errorCode..[0-9]+"|grep -oE "[0-9]+"`
     if [[ -z $error_code || $error_code -ne 0 ]]; then
-        i=6
+        i=100
         continue
     fi
     
     _ts=`date +%s`0000
     ret=`$HTTP_REQ "$api_url/keepalive?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"`
     if [ ! -z "`echo $ret|grep "not exist channel"`" ]; then
-        i=6
+        i=100
     else
         let i=i+1
-        sleep 270
+        sleep 590
     fi
 done
 '''.replace("\r", ""))
