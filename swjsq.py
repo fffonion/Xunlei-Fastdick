@@ -462,10 +462,10 @@ def update_ipk():
         fobj.seek(pos)
         return _
 
-    def add_to_tar(tar, name, sio_obj, mode = 33279):
+    def add_to_tar(tar, name, sio_obj, perm = 420):
         info = tarfile.TarInfo(name = name)
         info.size = flen(sio_obj)
-        info.mode = mode
+        info.mode = perm
         sio_obj.seek(0)
         tar.addfile(info, sio_obj)
 
@@ -473,11 +473,30 @@ def update_ipk():
     if os.path.exists(ipk_file):
         os.remove(ipk_file)
     ipk_fobj = tarfile.open(name = ipk_file, mode = 'w:gz')
-
+    
     data_stream = sio()
     data_fobj = tarfile.open(fileobj = data_stream, mode = 'w:gz')
+    # /usr/bin/swjsq
     data_content = open(shell_file, 'rb')
-    add_to_tar(data_fobj, './bin/swjsq', data_content)
+    add_to_tar(data_fobj, './bin/swjsq', data_content, perm = 511)
+    # /etc/init.d/swjsq
+    data_content = _sio('''#!/bin/sh /etc/rc.common
+START=90
+STOP=15
+USE_PROCD=1
+
+start_service()
+{
+	procd_open_instance
+	procd_set_param respawn ${respawn_threshold:-3600} ${respawn_timeout:-5} ${respawn_retry:-5}
+	procd_set_param command /bin/swjsq
+	procd_set_param stdout 1
+	procd_set_param stderr 1
+	procd_close_instance
+}
+''')
+    add_to_tar(data_fobj, './etc/init.d/swjsq', data_content, perm = 511)
+    # wrap up
     data_fobj.close()
     add_to_tar(ipk_fobj, './data.tar.gz', data_stream)
     data_stream.close()
