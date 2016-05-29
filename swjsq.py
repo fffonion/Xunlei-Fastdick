@@ -348,7 +348,7 @@ def make_wget_script(uid, pwd, dial_account, _payload):
 TEST_URL="https://baidu.com"
 UA_XL="User-Agent: swjsq/0.0.1"
 
-if [ ! -z "`wget --no-check-certificate -S -O - $TEST_URL 2>&1|grep "100%"`" ]; then
+if [ ! -z "`wget --no-check-certificate -O - $TEST_URL 2>&1|grep "100%"`" ]; then
    HTTP_REQ="wget -q --no-check-certificate -O - "
    POST_ARG="--post-data="
 else
