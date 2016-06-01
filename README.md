@@ -2,6 +2,8 @@
 ===
 一个可以运行在路由器的迅雷快鸟(diǎo)客户端
 
+在提交issue前，请先阅读[须知](https://github.com/fffonion/Xunlei-Fastdick/blob/master/CONTRIBUTING.md)
+
 # 快速入门
 * 同目录下新建 __swjsq.account.txt__，填入`用户名,密码`，如`ahaha,123456`（英文逗号），并保存
 * python ./swjsq.py &
