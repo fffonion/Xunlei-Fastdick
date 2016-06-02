@@ -110,7 +110,15 @@ def get_mac(nic = '', to_splt = ':'):
         cmd = 'ipconfig /all'
         splt = '-'
     elif os.name == "posix":
-        cmd = 'ifconfig %s' % (nic or '-a')
+        if os.path.exists('/usr/bin/ip') or os.path.exists('/bin/ip'):
+            if nic:
+                cmd = 'ip link show dev %s' % nic
+            else:
+                # Unfortunately, loopback interface always comes first
+                # So we have to grep it out
+                cmd = 'ip link show up | grep -v loopback'
+        else:
+            cmd = 'ifconfig %s' % (nic or '-a')
         splt = ':'
     else:
         return FALLBACK_MAC
