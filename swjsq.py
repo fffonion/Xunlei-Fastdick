@@ -20,6 +20,7 @@ rsa_pubexp = 0x010001
 
 APP_VERSION = "2.0.3.4"
 PROTOCOL_VERSION = 108
+FALLBACK_MAC = '000000000000'
 
 PY3K = sys.version.startswith('3')
 if not PY3K:
@@ -112,18 +113,18 @@ def get_mac(nic = '', to_splt = ':'):
         cmd = 'ifconfig %s' % (nic or '-a')
         splt = ':'
     else:
-        return ''
+        return FALLBACK_MAC
     try:
         r = os.popen(cmd).read()
         if r:
             _ = re.findall('((?:[0-9A-Fa-f]{2}%s){5}[0-9A-Fa-f]{2})' % splt, r)
             if not _:
-                return ''
+                return FALLBACK_MAC
             else:
                 return _[0].replace(splt, to_splt)
     except:
         pass
-    return '000000000000004V'
+    return FALLBACK_MAC
 
 
 def long2hex(l):
