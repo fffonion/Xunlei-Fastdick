@@ -164,9 +164,12 @@ def http_req(url, headers = {}, body = None, encoding = 'utf-8'):
 
 def login_xunlei(uname, pwd_md5, login_type = TYPE_NORMAL_ACCOUNT):
     pwd = rsa_encode(pwd_md5)
-    fake_device_id = hashlib.md5("%s23333" % pwd_md5).hexdigest() # just generate a 32bit string
-    # sign = div.10?.md5(sha1(packageName + businessType + md5(a protocolVersion specific GUID)))
-    device_sign = "div100.%s%s" % (fake_device_id, hashlib.md5(hashlib.sha1("%scom.xunlei.vip.swjsq68700d1872b772946a6940e4b51827e8af" % fake_device_id).hexdigest()).hexdigest())
+    fake_device_id = hashlib.md5(("%s23333" % pwd_md5).encode('utf-8')).hexdigest() # just generate a 32bit string
+    # sign = div.10?.device_id + md5(sha1(packageName + businessType + md5(a protocolVersion specific GUID)))
+    device_sign = "div100.%s%s" % (fake_device_id, hashlib.md5(
+        hashlib.sha1(("%scom.xunlei.vip.swjsq68700d1872b772946a6940e4b51827e8af" % fake_device_id).encode('utf-8'))
+            .hexdigest().encode('utf-8')
+     ).hexdigest())
     _payload = json.dumps({
             "protocolVersion": PROTOCOL_VERSION,# 109
             "sequenceNo": 1000001,
@@ -355,8 +358,8 @@ def make_wget_script(uid, pwd, dial_account, _payload):
     # i=1~17 keepalive, renew session, i++
     # i=18 (3h) re-upgrade, i:=0
     # i=100 login, i:=18
-    open(shell_file, 'wb').write(
-'''#!/bin/ash
+    with open(shell_file, 'wb') as f:
+        _ = '''#!/bin/ash
 TEST_URL="https://baidu.com"
 UA_XL="User-Agent: swjsq/0.0.1"
 
@@ -456,7 +459,10 @@ while true; do
         sleep 590
     fi
 done
-'''.replace("\r", ""))
+'''.replace("\r", "")
+        if PY3K:
+            _ = _.encode("utf-8")
+        f.write(_)
 
 
 def update_ipk():
