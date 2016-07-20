@@ -22,7 +22,7 @@ APP_VERSION = "2.0.3.4"
 PROTOCOL_VERSION = 108
 FALLBACK_MAC = '000000000000'
 
-PY3K = sys.version.startswith('3')
+PY3K = sys.version_info[0] == 3
 if not PY3K:
     import urllib2
     from cStringIO import StringIO as sio
