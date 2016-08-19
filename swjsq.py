@@ -283,7 +283,7 @@ def fast_d1ck(uname, pwd, login_type, save = True):
             f.write('%s,%s' % (dt['userID'], pwd))
 
     _ = api('bandwidth', dt['userID'])
-    if not _['can_upgrade']:
+    if 'can_upgrade' not in _ or not _['can_upgrade']:
         uprint('Error: can not upgrade, so sad TAT %s' % _['message'], 'Error: can not upgrade, so sad TAT')
         os._exit(3)
 
