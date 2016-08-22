@@ -437,7 +437,9 @@ while true; do
     if test $i -eq 18; then
       _ts=`date +%s`0000
       $HTTP_REQ "$api_url/upgrade?peerid=$peerid&userid=$uid&sessionid=$session&user_type=1&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"
-      i=0
+      i=1
+      sleep 590
+      continue
     fi
 
     sleep 1
