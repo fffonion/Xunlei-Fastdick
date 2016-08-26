@@ -558,6 +558,13 @@ Description:  Xunlei Fast Dick
 
 
 if __name__ == '__main__':
+    # change to script directory
+    if getattr(sys, 'frozen', False):
+        _wd = os.path.dirname(os.path.realpath(sys.executable))
+    else:
+        _wd = sys.path[0]
+    os.chdir(_wd)
+    
     setup()
     try:
         if os.path.exists(account_file_plain):
