@@ -339,7 +339,13 @@ def fast_d1ck(uname, pwd, login_type, save = True):
                 if _dt_t['errorCode']:
                     i = 100
                     continue
-                _ = api('keepalive', dt['userID'], dt['sessionID'])
+                try:
+                    _ = api('keepalive', dt['userID'], dt['sessionID'])
+                except Exception as ex:
+                    print("keepalive exception: %s" % str(ex))
+                    time.sleep(60)
+                    i = 18
+                    continue
             if _['errno']:
                 print('Error %s: %s' % (_['errno'], _['message']))
                 if _['errno'] == 513:# TEST: re-upgrade when get 'not exist channel'
@@ -435,6 +441,7 @@ while true; do
     fi
 
     if test $i -eq 18; then
+      echo "upgrade"
       _ts=`date +%s`0000
       $HTTP_REQ "$api_url/upgrade?peerid=$peerid&userid=$uid&sessionid=$session&user_type=1&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"
       i=1
@@ -443,9 +450,10 @@ while true; do
     fi
 
     sleep 1
-	day_of_month_orig=`date +%d`
+    day_of_month_orig=`date +%d`
     day_of_month=`echo $day_of_month_orig|grep -oE "[1-9]{1,2}"`
     if [[ -z $orig_day_of_month || $day_of_month -ne $orig_day_of_month ]]; then
+       echo "recover"
        orig_day_of_month=$day_of_month
        _ts=`date +%s`0000
        $HTTP_REQ "$api_url/recover?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"
@@ -454,6 +462,7 @@ while true; do
        continue
     fi
 
+    echo "renew xunlei"
     ret=`$HTTP_REQ https://login.mobile.reg2t.sandai.net:443/ $POST_ARG"{\\"protocolVersion\\":'''+str(PROTOCOL_VERSION)+''',\\"sequenceNo\\":1000000,\\"platformVersion\\":1,\\"peerID\\":\\"$peerid\\",\\"businessType\\":68,\\"clientVersion\\":\\"'''+APP_VERSION+'''\\",\\"isCompressed\\":0,\\"cmdID\\":11,\\"userID\\":$uid,\\"sessionID\\":\\"$session\\"}" --header "$UA_XL"`
     error_code=`echo $ret|grep -oE "errorCode..[0-9]+"|grep -oE "[0-9]+"`
     if [[ -z $error_code || $error_code -ne 0 ]]; then
@@ -461,8 +470,14 @@ while true; do
         continue
     fi
 
+    echo "keepalive"
     _ts=`date +%s`0000
     ret=`$HTTP_REQ "$api_url/keepalive?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"`
+    if [[ -z $ret ]]; then
+        sleep 60
+        i=18
+        continue
+    fi
     if [ ! -z "`echo $ret|grep "not exist channel"`" ]; then
         i=100
     else
