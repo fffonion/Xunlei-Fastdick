@@ -432,34 +432,34 @@ while true; do
             echo "session is $session"
         fi
 
-      if [ -z "$uid" ]; then
-          #echo "uid is empty"
-          uid=$uid_orig
-      else
-          echo "uid is $uid"
-      fi
+        if [ -z "$uid" ]; then
+            #echo "uid is empty"
+            uid=$uid_orig
+        else
+            echo "uid is $uid"
+        fi
     fi
 
     if test $i -eq 18; then
-      echo "upgrade"
-      _ts=`date +%s`0000
-      $HTTP_REQ "$api_url/upgrade?peerid=$peerid&userid=$uid&sessionid=$session&user_type=1&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"
-      i=1
-      sleep 590
-      continue
+        echo "upgrade"
+        _ts=`date +%s`0000
+        $HTTP_REQ "$api_url/upgrade?peerid=$peerid&userid=$uid&sessionid=$session&user_type=1&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"
+        i=1
+        sleep 590
+        continue
     fi
 
     sleep 1
     day_of_month_orig=`date +%d`
     day_of_month=`echo $day_of_month_orig|grep -oE "[1-9]{1,2}"`
     if [[ -z $orig_day_of_month || $day_of_month -ne $orig_day_of_month ]]; then
-       echo "recover"
-       orig_day_of_month=$day_of_month
-       _ts=`date +%s`0000
-       $HTTP_REQ "$api_url/recover?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"
-       sleep 5
-       i=100
-       continue
+        echo "recover"
+        orig_day_of_month=$day_of_month
+        _ts=`date +%s`0000
+        $HTTP_REQ "$api_url/recover?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"
+        sleep 5
+        i=100
+        continue
     fi
 
     echo "renew xunlei"
