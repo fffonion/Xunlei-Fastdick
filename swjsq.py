@@ -36,6 +36,9 @@ account_file_plain = 'swjsq.account.txt'
 shell_file = 'swjsq_wget.sh'
 ipk_file = 'swjsq_0.0.1_all.ipk'
 
+last_login_xunlei = 0
+login_xunlei_intv = 600 # do not login twice in 10min
+
 try:
     from Crypto.PublicKey import RSA
 except ImportError:
@@ -172,6 +175,13 @@ def http_req(url, headers = {}, body = None, encoding = 'utf-8'):
 
 
 def login_xunlei(uname, pwd_md5, login_type = TYPE_NORMAL_ACCOUNT):
+    global last_login_xunlei
+    _ = int(login_xunlei_intv - time.time() + last_login_xunlei)
+    if _ > 0: 
+        print("sleep %ds to prevent login flood" % _)
+        time.sleep(_)
+    last_login_xunlei = time.time()
+
     pwd = rsa_encode(pwd_md5)
     fake_device_id = hashlib.md5(("%s23333" % pwd_md5).encode('utf-8')).hexdigest() # just generate a 32bit string
     # sign = div.10?.device_id + md5(sha1(packageName + businessType + md5(a protocolVersion specific GUID)))
@@ -317,6 +327,7 @@ def fast_d1ck(uname, pwd, login_type, save = True):
     atexit.register(_atexit_func)
     i = 0
     while True:
+        has_error = False
         try:
             # i=1~17 keepalive, renew session, i++
             # i=18 (3h) re-upgrade, i:=0
@@ -360,13 +371,18 @@ def fast_d1ck(uname, pwd, login_type, save = True):
             import traceback
             _ = traceback.format_exc()
             print(_)
+            has_error = True
         with open('swjsq.log', 'a') as f:
             try:
                 f.write('%s %s\n' % (time.strftime('%X', time.localtime(time.time())), _))
             except UnicodeEncodeError:
                 f.write('%s keepalive\n' % (time.strftime('%X', time.localtime(time.time()))))
-        i += 1
-        time.sleep(590)#10 min
+        if has_error:
+            # sleep 5 min and repeat the same state
+            time.sleep(290)#5 min
+        else:
+            i += 1
+            time.sleep(590)#10 min
 
 
 def make_wget_script(uid, pwd, dial_account, _payload):
@@ -393,6 +409,9 @@ nic=eth0
 peerid='''+MAC+'''
 uid_orig=$uid
 
+last_login_xunlei=0
+login_xunlei_intv='''+str(login_xunlei_intv)+'''
+
 day_of_month_orig=`date +%d`
 orig_day_of_month=`echo $day_of_month_orig|grep -oE "[1-9]{1,2}"`
 portal=`$HTTP_REQ http://api.portal.swjsq.vip.xunlei.com:81/v2/queryportal`
@@ -415,6 +434,12 @@ api_url="http://$portal_ip:$portal_port/v2"
 i=100
 while true; do
     if test $i -ge 100; then
+        tmstmp=`date "+%s"`
+        let slp=login_xunlei_intv-tmstmp+last_login_xunlei
+        if test $slp -ge 0 then;
+            sleep $slp
+        fi
+        last_login_xunlei=$tmstmp
         echo "login xunlei"
         ret=`$HTTP_REQ https://login.mobile.reg2t.sandai.net:443/ $POST_ARG"'''+_payload.replace('"','\\"')+'''" --header "$UA_XL"`
         session_temp=`echo $ret|grep -oE "sessionID...[A-F,0-9]{32}"`
