@@ -436,7 +436,7 @@ while true; do
     if test $i -ge 100; then
         tmstmp=`date "+%s"`
         let slp=login_xunlei_intv-tmstmp+last_login_xunlei
-        if test $slp -ge 0 then;
+        if test $slp -ge 0; then
             sleep $slp
         fi
         last_login_xunlei=$tmstmp
