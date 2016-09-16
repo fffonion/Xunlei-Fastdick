@@ -21,6 +21,7 @@ rsa_pubexp = 0x010001
 APP_VERSION = "2.0.3.4"
 PROTOCOL_VERSION = 108
 FALLBACK_MAC = '000000000000'
+FALLBACK_PORTAL = "119.147.41.210:80"
 
 PY3K = sys.version_info[0] == 3
 if not PY3K:
@@ -235,10 +236,16 @@ def renew_xunlei(uid, session):
 
 
 def api_url():
-    portal = json.loads(http_req("http://api.portal.swjsq.vip.xunlei.com:81/v2/queryportal"))
+    for _port in (82, 81):
+        try:
+            portal = json.loads(http_req("http://api.portal.swjsq.vip.xunlei.com:%d/v2/queryportal" % _port))
+        except:
+            return FALLBACK_PORTAL
+        else:
+            break
     if portal['errno']:
         print('Warning: get interface_ip failed, use fallback address')
-        return "119.147.41.210:80"
+        return FALLBACK_PORTAL
     return '%s:%s' % (portal['interface_ip'], portal['interface_port'])
 
 
@@ -414,7 +421,7 @@ login_xunlei_intv='''+str(login_xunlei_intv)+'''
 
 day_of_month_orig=`date +%d`
 orig_day_of_month=`echo $day_of_month_orig|grep -oE "[1-9]{1,2}"`
-portal=`$HTTP_REQ http://api.portal.swjsq.vip.xunlei.com:81/v2/queryportal`
+portal=`$HTTP_REQ http://api.portal.swjsq.vip.xunlei.com:82/v2/queryportal`
 portal_ip=`echo $portal|grep -oE '([0-9]{1,3}[\.]){3}[0-9]{1,3}'`
 portal_port_temp=`echo $portal|grep -oE "port...[0-9]{1,5}"`
 portal_port=`echo $portal_port_temp|grep -oE '[0-9]{1,5}'`
