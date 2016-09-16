@@ -68,3 +68,6 @@ docker run -d --name=xunlei-fastdick --restart=unless-stopped -e XUNLEI_UID=<uid
 * 如果修改或更新了python脚本，下次运行时将重新生成ipk包和`swjsq_wget.sh`，请重新安装ipk或拷贝`swjsq_wget.sh`到路由器
 * 会员权限及月加速流量等详见[这里](http://swjsq.xunlei.com)
 * 自带[这里抄的](https://github.com/mengskysama/XunLeiCrystalMinesMakeDie/blob/master/run.py)纯python实现RSA加密，可选安装pycrypto加快(首次)运算速度
+
+# 同类产品
+- [mengskysama/yikuuuuu](https://github.com/mengskysama/yikuuuuu)
