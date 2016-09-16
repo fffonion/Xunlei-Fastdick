@@ -247,6 +247,9 @@ def api_url():
     if not portal or portal['errno']:
         print('Warning: get interface_ip failed, use fallback address')
         return FALLBACK_PORTAL
+    # dirty check, may change in the future
+    if portal['interface_ip'] == "119.147.41.210" and portal['interface_port'] == "90":
+        return FALLBACK_PORTAL
     return '%s:%s' % (portal['interface_ip'], portal['interface_port'])
 
 
