@@ -436,10 +436,12 @@ login_xunlei_intv='''+str(login_xunlei_intv)+'''
 
 day_of_month_orig=`date +%d`
 orig_day_of_month=`echo $day_of_month_orig|grep -oE "[1-9]{1,2}"`
-portal=`$HTTP_REQ http://api.portal.swjsq.vip.xunlei.com:82/v2/queryportal`
-portal_ip=`echo $portal|grep -oE '([0-9]{1,3}[\.]){3}[0-9]{1,3}'`
-portal_port_temp=`echo $portal|grep -oE "port...[0-9]{1,5}"`
-portal_port=`echo $portal_port_temp|grep -oE '[0-9]{1,5}'`
+#portal=`$HTTP_REQ http://api.portal.swjsq.vip.xunlei.com:82/v2/queryportal`
+#portal_ip=`echo $portal|grep -oE '([0-9]{1,3}[\.]){3}[0-9]{1,3}'`
+#portal_port_temp=`echo $portal|grep -oE "port...[0-9]{1,5}"`
+#portal_port=`echo $portal_port_temp|grep -oE '[0-9]{1,5}'`
+portal_ip='''+API_URL.split(":")[0]+'''
+portal_port='''+API_URL.split(":")[1]+'''
 
 if [ -z "$portal_ip" ]; then
     sleep 30
