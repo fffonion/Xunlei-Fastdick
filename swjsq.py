@@ -26,10 +26,12 @@ FALLBACK_PORTAL = "119.147.41.210:80"
 PY3K = sys.version_info[0] == 3
 if not PY3K:
     import urllib2
+    from urllib2 import URLError
     from cStringIO import StringIO as sio
     rsa_pubexp = long(rsa_pubexp)
 else:
     import urllib.request as urllib2
+    from urllib.error import URLError
     from io import BytesIO as sio
 
 account_file_encrypted = '.swjsq.account'
@@ -168,7 +170,7 @@ def http_req(url, headers = {}, body = None, encoding = 'utf-8'):
         req.add_header(k, headers[k])
     if sys.version.startswith('3') and isinstance(body, str):
         body = bytes(body, encoding = 'ascii')
-    resp = urllib2.urlopen(req, data = body)
+    resp = urllib2.urlopen(req, data = body, timeout = 60)
     ret = resp.read().decode(encoding)
     if sys.version.startswith('3') and isinstance(ret, bytes):
         ret = str(ret)
@@ -248,8 +250,8 @@ def api_url():
         print('Warning: get interface_ip failed, use fallback address')
         return FALLBACK_PORTAL
     # dirty check, may change in the future
-    if portal['interface_ip'] == "119.147.41.210" and portal['interface_port'] == "90":
-        return FALLBACK_PORTAL
+    # if portal['interface_ip'] == "119.147.41.210" and portal['interface_port'] == "90":
+    #    return FALLBACK_PORTAL
     return '%s:%s' % (portal['interface_ip'], portal['interface_port'])
 
 
@@ -261,19 +263,28 @@ def setup():
 
 
 def api(cmd, uid, session_id = '', extras = ''):
-    # missing dial_account, (userid), os
-    url = 'http://%s/v2/%s?%sclient_type=android-swjsq-%s&peerid=%s&time_and=%d&client_version=androidswjsq-%s&userid=%s&os=android-5.0.1.23SmallRice%s' % (
-            API_URL,
-            cmd,
-            ('sessionid=%s&' % session_id) if session_id else '',
-            APP_VERSION,
-            MAC,
-            time.time() * 1000,
-            APP_VERSION,
-            uid,
-            ('&%s' % extras) if extras else '',
-    )
-    return json.loads(http_req(url, headers = header_api))
+    global API_URL
+    while True:
+        # missing dial_account, (userid), os
+        url = 'http://%s/v2/%s?%sclient_type=android-swjsq-%s&peerid=%s&time_and=%d&client_version=androidswjsq-%s&userid=%s&os=android-5.0.1.23SmallRice%s' % (
+                API_URL,
+                cmd,
+                ('sessionid=%s&' % session_id) if session_id else '',
+                APP_VERSION,
+                MAC,
+                time.time() * 1000,
+                APP_VERSION,
+                uid,
+                ('&%s' % extras) if extras else '',
+        )
+        try:
+            return json.loads(http_req(url, headers = header_api))
+        except URLError as ex:
+            uprint("Warning: error during api connection: %s, use portal: %s" % (str(ex), API_URL))
+            if API_URL == FALLBACK_PORTAL:
+                print("Error: can't connect to api")
+                os._exit(5)
+            API_URL = FALLBACK_PORTAL
 
 
 def fast_d1ck(uname, pwd, login_type, save = True):
@@ -302,7 +313,7 @@ def fast_d1ck(uname, pwd, login_type, save = True):
             pass
         with open(account_file_encrypted, 'w') as f:
             f.write('%s,%s' % (dt['userID'], pwd))
-
+    
     _ = api('bandwidth', dt['userID'])
     if 'can_upgrade' not in _ or not _['can_upgrade']:
         uprint('Error: can not upgrade, so sad TAT %s' % _['message'], 'Error: can not upgrade, so sad TAT')
