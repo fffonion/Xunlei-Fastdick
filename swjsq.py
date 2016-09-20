@@ -239,9 +239,9 @@ def renew_xunlei(uid, session):
 
 def api_url():
     portal = None
-    for _port in (82, 81):
+    for cmb in (("", 81), ("2", 81), ("", 82)):
         try:
-            portal = json.loads(http_req("http://api.portal.swjsq.vip.xunlei.com:%d/v2/queryportal" % _port))
+            portal = json.loads(http_req("http://api%s.portal.swjsq.vip.xunlei.com:%d/v2/queryportal" % cmb))
         except:
             pass
         else:
@@ -249,9 +249,6 @@ def api_url():
     if not portal or portal['errno']:
         print('Warning: get interface_ip failed, use fallback address')
         return FALLBACK_PORTAL
-    # dirty check, may change in the future
-    # if portal['interface_ip'] == "119.147.41.210" and portal['interface_port'] == "90":
-    #    return FALLBACK_PORTAL
     return '%s:%s' % (portal['interface_ip'], portal['interface_port'])
 
 
