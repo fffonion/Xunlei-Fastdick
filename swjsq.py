@@ -384,6 +384,9 @@ def fast_d1ck(uname, pwd, login_type, save = True):
                 elif _['errno'] == 812:
                     print('Already upgraded, continuing')
                     i = 0
+                elif _['errno'] == 717 or _['errno'] == 718:# re-upgrade when get 'account auth session failed'
+                    i = 100
+                    continue
                 else:
                     time.sleep(300)#os._exit(4)
         except Exception as ex:
