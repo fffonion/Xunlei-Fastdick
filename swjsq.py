@@ -5,11 +5,16 @@ import re
 import sys
 import json
 import time
-import hashlib
 import binascii
 import tarfile
-import ssl
 import atexit
+try:
+    import ssl
+    import hashlib
+except ImportError as ex:
+    print("Error: cannot import module ssl or hashlib (%s)." % str(ex))
+    print("If you are using openwrt, run \"opkg install python-openssl\"")
+    os._exit(0)
 
 #xunlei use self-signed certificate; on py2.7.9+
 if hasattr(ssl, '_create_unverified_context') and hasattr(ssl, '_create_default_https_context'):
