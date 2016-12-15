@@ -15,7 +15,7 @@
 以小米路由为例
 
 1. 开启SSH
-2. 安装Python
+2. 安装Python (OpenWRT用户可以安装完整的`python`包，或者安装`python-light`, `python-codecs`和`python-openssl`三个包
 3. 将[swjsq.py](https://github.com/fffonion/Xunlei-Fastdick/raw/master/swjsq.py)通过[WinSCP](https://winscp.net/eng/download.php)拷贝到路由`/data/usr/bin/swjsq`，同目录下新建 __swjsq.account.txt__，填入`用户名,密码`，如`ahaha,123456`（英文逗号），并保存
 4. 使用SSH进入目录`/data/usr/bin/swjsq`，运行`$ python ./swjsq.py`
 5. 测试运行一次看能否提速，提示`Upgrade done: Down xxM, Up xxM`即表示成功
