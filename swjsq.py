@@ -97,8 +97,8 @@ else:
         return _
 
 
-TYPE_NORMAL_ACCOUNT = 0
-TYPE_NUM_ACCOUNT = 1
+# TYPE_NORMAL_ACCOUNT = 0
+# TYPE_NUM_ACCOUNT = 1
 
 UNICODE_WARNING_SHOWN = False
 
@@ -182,7 +182,7 @@ def http_req(url, headers = {}, body = None, encoding = 'utf-8'):
     return ret
 
 
-def login_xunlei(uname, pwd_md5, login_type = TYPE_NORMAL_ACCOUNT):
+def login_xunlei(uname, pwd_md5):
     global last_login_xunlei
     _ = int(login_xunlei_intv - time.time() + last_login_xunlei)
     if _ > 0: 
@@ -210,7 +210,7 @@ def login_xunlei(uname, pwd_md5, login_type = TYPE_NORMAL_ACCOUNT):
             "cmdID": 1,
             "userName": uname,
             "passWord": pwd,
-            "loginType": login_type,
+            "loginType": 0, # normal account
             "sessionID": "",
             "verifyKey": "",
             "verifyCode": "",
@@ -289,12 +289,12 @@ def api(cmd, uid, session_id = '', extras = ''):
             API_URL = FALLBACK_PORTAL
 
 
-def fast_d1ck(uname, pwd, login_type, save = True):
+def fast_d1ck(uname, pwd, save = True):
     if uname[-2] == ':':
         print('Error: sub account can not upgrade')
         os._exit(3)
 
-    dt, _payload = login_xunlei(uname, pwd, login_type)
+    dt, _payload = login_xunlei(uname, pwd)
     if 'sessionID' not in dt:
         uprint('Error: login failed, %s' % dt['errorDesc'], 'Error: login failed')
         print(dt)
@@ -314,7 +314,7 @@ def fast_d1ck(uname, pwd, login_type, save = True):
         except:
             pass
         with open(account_file_encrypted, 'w') as f:
-            f.write('%s,%s' % (dt['userID'], pwd))
+            f.write('%s,%s' % (uname, pwd))
     
     _ = api('bandwidth', dt['userID'])
     if 'can_upgrade' not in _ or not _['can_upgrade']:
@@ -357,7 +357,7 @@ def fast_d1ck(uname, pwd, login_type, save = True):
             # i=18 (3h) re-upgrade, i:=0
             # i=100 login, i:=36
             if i == 100:
-                dt, _payload = login_xunlei(uname, pwd, login_type)
+                dt, _payload = login_xunlei(uname, pwd)
                 i = 18
             if i % 18 == 0:#3h
                 print('Initializing upgrade')
@@ -640,14 +640,14 @@ if __name__ == '__main__':
             uid, pwd = open(account_file_plain).read().strip().split(',')
             if PY3K:
                 pwd = pwd.encode('utf-8')
-            fast_d1ck(uid, hashlib.md5(pwd).hexdigest(), TYPE_NORMAL_ACCOUNT)
+            fast_d1ck(uid, hashlib.md5(pwd).hexdigest())
         elif os.path.exists(account_file_encrypted):
             uid, pwd_md5 = open(account_file_encrypted).read().strip().split(',')
-            fast_d1ck(uid, pwd_md5, TYPE_NUM_ACCOUNT, save = False)
+            fast_d1ck(uid, pwd_md5, save = False)
         elif 'XUNLEI_UID' in os.environ and 'XUNLEI_PASSWD' in os.environ:
             uid = os.environ['XUNLEI_UID']
             pwd = os.environ['XUNLEI_PASSWD']
-            fast_d1ck(uid, hashlib.md5(pwd).hexdigest(), TYPE_NORMAL_ACCOUNT)
+            fast_d1ck(uid, hashlib.md5(pwd).hexdigest())
         else:
             print('Please use XUNLEI_UID=<uid>/XUNLEI_PASSWD=<pass> envrionment varibles or create config file "%s", input account splitting with comma(,). Eg:\nyonghuming,mima' % account_file_plain)
     except KeyboardInterrupt:
