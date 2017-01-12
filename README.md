@@ -50,17 +50,33 @@
 
 # Docker
 
-* 下载最新 docker image
+**下载最新 docker镜像**
 
 ```
-docker pull flier/xunlei-fastdick
+$ docker pull fffonion/xunlei-fastdick
 ```
 
-* 指定环境变量作为启动参数
+群晖用户可以直接从`套件`->`Docker`->`注册表`中搜索`xunlei-fastdick`并下载；如果拉取失败，可以登录SSH后运行上述命令。
+
+
+或者使用DaoCloud镜像
 
 ```
-docker run -d --name=xunlei-fastdick --restart=unless-stopped -e XUNLEI_UID=<uid> -e XUNLEI_PASSWD=<uid> flier/xunlei-fastdick
+$ docker pull daocloud.io/fffonion/xunlei-fastdick
 ```
+
+**指定环境变量作为启动参数**
+
+```
+$ docker run -d --name=xunlei-fastdick --restart=unless-stopped -e XUNLEI_UID=<uid> -e XUNLEI_PASSWD=<uid> fffonion/xunlei-fastdick
+```
+
+如果上一步使用了DaoCloud镜像
+
+```
+$ docker run -d --name=xunlei-fastdick --restart=unless-stopped -e XUNLEI_UID=<uid> -e XUNLEI_PASSWD=<uid> daocloud.io/fffonion/xunlei-fastdick
+```
+
 
 # 说明
 * 生成的`swjsq_wget.sh`和`swjsq_0.0.1_all.ipk`包含了账户信息，请不要共享给他人使用
