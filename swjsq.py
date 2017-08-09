@@ -25,8 +25,13 @@ rsa_pubexp = 0x010001
 
 APP_VERSION = "2.0.3.4"
 PROTOCOL_VERSION = 108
+VASID_DOWN = 14 # vasid for downstream accel
+VASID_UP = 33 # vasid for upstream accel
 FALLBACK_MAC = '000000000000'
-FALLBACK_PORTAL = "119.147.41.210:80"
+FALLBACK_PORTAL = "119.147.41.210:12180"
+FALLBACK_UPPORTAL = "153.37.208.185:81"
+
+UNICODE_WARNING_SHOWN = False
 
 PY3K = sys.version_info[0] == 3
 if not PY3K:
@@ -43,9 +48,23 @@ account_file_encrypted = '.swjsq.account'
 account_file_plain = 'swjsq.account.txt'
 shell_file = 'swjsq_wget.sh'
 ipk_file = 'swjsq_0.0.1_all.ipk'
+log_file = 'swjsq.log'
 
-last_login_xunlei = 0
 login_xunlei_intv = 600 # do not login twice in 10min
+
+header_xl = {
+    'Content-Type':'',
+    'Connection': 'Keep-Alive',
+    'Accept-Encoding': 'gzip',
+    'User-Agent': 'android-async-http/xl-acc-sdk/version-1.6.1.177600'
+}
+header_api = {
+    'Content-Type':'',
+    'Connection': 'Keep-Alive',
+    'Accept-Encoding': 'gzip',
+    'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 5.0.1; SmallRice Build/LRX22C)'
+}
+
 
 try:
     from Crypto.PublicKey import RSA
@@ -97,25 +116,6 @@ else:
         return _
 
 
-# TYPE_NORMAL_ACCOUNT = 0
-# TYPE_NUM_ACCOUNT = 1
-
-UNICODE_WARNING_SHOWN = False
-
-header_xl = {
-    'Content-Type':'',
-    'Connection': 'Keep-Alive',
-    'Accept-Encoding': 'gzip',
-    'User-Agent': 'android-async-http/xl-acc-sdk/version-1.6.1.177600'
-}
-header_api = {
-    'Content-Type':'',
-    'Connection': 'Keep-Alive',
-    'Accept-Encoding': 'gzip',
-    'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 5.0.1; SmallRice Build/LRX22C)'
-}
-
-
 def get_mac(nic = '', to_splt = ':'):
     if os.name == 'nt':
         cmd = 'ipconfig /all'
@@ -145,11 +145,44 @@ def get_mac(nic = '', to_splt = ':'):
         pass
     return FALLBACK_MAC
 
+    
+def api_url(up = False):
+    portal = None
+    if up:
+        portals = (("", "up", 80), )
+    else:
+        portals = (("", "", 81), ("2", "", 81), ("", "", 82))
+    for cmb in portals:
+        portal = json.loads(http_req("http://api%s.%sportal.swjsq.vip.xunlei.com:%d/v2/queryportal" % cmb))
+        try:
+            portal = json.loads(http_req("http://api%s.%sportal.swjsq.vip.xunlei.com:%d/v2/queryportal" % cmb))
+        except:
+            pass
+        else:
+            break
+    if not portal or portal['errno']:
+        print('Warning: get interface_ip failed, use fallback address')
+        if up:
+            return FALLBACK_UPPORTAL
+        else:
+            return FALLBACK_PORTAL
+    return '%s:%s' % (portal['interface_ip'], portal['interface_port'])
 
 def long2hex(l):
     return hex(l)[2:].upper().rstrip('L')
 
+_real_print = print
+logfd = open(log_file, 'ab')
 
+def print(s, **kwargs):
+    line = "%s %s" % (time.strftime('%X', time.localtime(time.time())), s)
+    logfd.write(line.encode('utf-8'))
+    if PY3K:
+        logfd.write(b'\n')
+    else:
+        logfd.write("\n")
+    _real_print(line, **kwargs)
+    
 def uprint(s, fallback = None, end = None):
     global UNICODE_WARNING_SHOWN
     while True:
@@ -182,242 +215,307 @@ def http_req(url, headers = {}, body = None, encoding = 'utf-8'):
     return ret
 
 
-def login_xunlei(uname, pwd_md5):
-    global last_login_xunlei
-    _ = int(login_xunlei_intv - time.time() + last_login_xunlei)
-    if _ > 0: 
-        print("sleep %ds to prevent login flood" % _)
-        time.sleep(_)
-    last_login_xunlei = time.time()
+class fast_d1ck(object):
+    def __init__(self):
+        self.api_url = api_url(up = False)
+        self.api_up_url = api_url(up = True)
+        self.mac = get_mac(to_splt = '').upper() + '004V'
+        self.xl_uid = None
+        self.xl_session = None
+        self.xl_login_payload = None
+        self.last_login_xunlei = 0
+        self.is_down_vip = False
+        self.is_up_vip = False
+        
+        self.state = 0
 
-    pwd = rsa_encode(pwd_md5)
-    fake_device_id = hashlib.md5(("%s23333" % pwd_md5).encode('utf-8')).hexdigest() # just generate a 32bit string
-    # sign = div.10?.device_id + md5(sha1(packageName + businessType + md5(a protocolVersion specific GUID)))
-    device_sign = "div100.%s%s" % (fake_device_id, hashlib.md5(
-        hashlib.sha1(("%scom.xunlei.vip.swjsq68700d1872b772946a6940e4b51827e8af" % fake_device_id).encode('utf-8'))
-            .hexdigest().encode('utf-8')
-     ).hexdigest())
-    _payload = json.dumps({
-            "protocolVersion": PROTOCOL_VERSION,# 109
-            "sequenceNo": 1000001,
+        
+    def login_xunlei(self, uname, pwd_md5):
+        _ = int(login_xunlei_intv - time.time() + self.last_login_xunlei)
+        if _ > 0: 
+            print("sleep %ds to prevent login flood" % _)
+            time.sleep(_)
+        self.last_login_xunlei = time.time()
+
+        pwd = rsa_encode(pwd_md5)
+        fake_device_id = hashlib.md5(("%s23333" % pwd_md5).encode('utf-8')).hexdigest() # just generate a 32bit string
+        # sign = div.10?.device_id + md5(sha1(packageName + businessType + md5(a protocolVersion specific GUID)))
+        device_sign = "div100.%s%s" % (fake_device_id, hashlib.md5(
+            hashlib.sha1(("%scom.xunlei.vip.swjsq68700d1872b772946a6940e4b51827e8af" % fake_device_id).encode('utf-8'))
+                .hexdigest().encode('utf-8')
+         ).hexdigest())
+        _payload = {
+                "protocolVersion": PROTOCOL_VERSION,# 109
+                "sequenceNo": 1000001,
+                "platformVersion": 1,
+                "sdkVersion": 177550,# 177600
+                "peerID": self.mac,
+                "businessType": 68,
+                "clientVersion": APP_VERSION,
+                "devicesign":device_sign,
+                "isCompressed": 0,
+                "cmdID": 1,
+                "userName": uname,
+                "passWord": pwd,
+                "loginType": 0, # normal account
+                "sessionID": "",
+                "verifyKey": "",
+                "verifyCode": "",
+                "appName": "ANDROID-com.xunlei.vip.swjsq",
+                "rsaKey": {
+                    "e": "%06X" % rsa_pubexp,
+                    "n": long2hex(rsa_mod)
+                },
+                "extensionList": ""
+        }
+        ct = http_req('https://login.mobile.reg2t.sandai.net:443/', body = json.dumps(_payload), headers = header_xl, encoding = 'gbk')
+        self.xl_login_payload = _payload
+        dt = json.loads(ct)
+        if 'sessionID' in dt:
+            self.xl_session = dt['sessionID']
+        if 'userID' in dt:
+            self.xl_uid = dt['userID']
+        return dt
+
+
+    def check_xunlei_vas(self, vasid):
+        # copy original payload to new dict
+        _payload = dict(self.xl_login_payload)
+        _payload.update({
+            "sequenceNo": 1000002,
+            "cmdID": 3,
+            "vasid": vasid,
+            "userID": self.xl_uid,
+            "sessionID": self.xl_session,
+            "extensionList": [
+                "payId", "isVip", "mobile", "birthday", "isSubAccount", "isAutoDeduct", "isYear", "imgURL",
+                "vipDayGrow", "role", "province", "rank", "expireDate", "personalSign", "jumpKey", "allowScore",
+                "nickName", "vipGrow", "isSpecialNum", "vipLevel", "order", "payName", "isRemind", "account",
+                "sex", "vasType", "register", "todayScore", "city", "country"
+            ]
+        })
+        # delete unwanted kv pairs
+        for k in ('userName', 'passWord', 'loginType', 'verifyKey', 'verifyCode', 'rsaKey'):
+            del _payload[k]
+        ct = http_req('https://login.mobile.reg2t.sandai.net:443/', body = json.dumps(_payload), headers = header_xl, encoding = 'gbk')
+        return json.loads(ct)
+
+    def renew_xunlei(self):
+        _payload = {
+            "protocolVersion": 108,
+            "sequenceNo": 1000000,
             "platformVersion": 1,
-            "sdkVersion": 177550,# 177600
-            "peerID": MAC,
+            "peerID": self.mac,
             "businessType": 68,
             "clientVersion": APP_VERSION,
-            "devicesign":device_sign,
             "isCompressed": 0,
-            "cmdID": 1,
-            "userName": uname,
-            "passWord": pwd,
-            "loginType": 0, # normal account
-            "sessionID": "",
-            "verifyKey": "",
-            "verifyCode": "",
-            "appName": "ANDROID-com.xunlei.vip.swjsq",
-            "rsaKey": {
-                "e": "%06X" % rsa_pubexp,
-                "n": long2hex(rsa_mod)
-            },
-            "extensionList": ""
-    })
-    ct = http_req('https://login.mobile.reg2t.sandai.net:443/', body = _payload, headers = header_xl, encoding = 'gbk')
-    return json.loads(ct), _payload
+            "cmdID": 11,
+            "userID": self.xl_uid,
+            "sessionID": self.xl_session
+        }
+        ct = http_req('https://login.mobile.reg2t.sandai.net:443/', body = json.dumps(_payload), headers = header_xl, encoding = 'gbk')
+        dt = json.loads(ct)
+        if 'sessionID' in dt:
+            self.xl_session = dt['sessionID']
+        if 'userID' in dt:
+            self.xl_uid = dt['userID']
+        return dt
 
 
-def renew_xunlei(uid, session):
-    _payload = json.dumps({
-        "protocolVersion": 108,
-        "sequenceNo": 1000000,
-        "platformVersion": 1,
-        "peerID": MAC,
-        "businessType": 68,
-        "clientVersion": APP_VERSION,
-        "isCompressed": 0,
-        "cmdID": 11,
-        "userID": uid,
-        "sessionID": session
-    })
-    ct = http_req('https://login.mobile.reg2t.sandai.net:443/', body = _payload, headers = header_xl, encoding = 'gbk')
-    return json.loads(ct), _payload
-
-
-def api_url():
-    portal = None
-    for cmb in (("", 81), ("2", 81), ("", 82)):
-        try:
-            portal = json.loads(http_req("http://api%s.portal.swjsq.vip.xunlei.com:%d/v2/queryportal" % cmb))
-        except:
-            pass
-        else:
-            break
-    if not portal or portal['errno']:
-        print('Warning: get interface_ip failed, use fallback address')
-        return FALLBACK_PORTAL
-    return '%s:%s' % (portal['interface_ip'], portal['interface_port'])
-
-
-def setup():
-    global MAC
-    global API_URL
-    MAC = get_mac(to_splt = '').upper() + '004V'
-    API_URL = api_url()
-
-
-def api(cmd, uid, session_id = '', extras = ''):
-    global API_URL
-    while True:
-        # missing dial_account, (userid), os
-        url = 'http://%s/v2/%s?%sclient_type=android-swjsq-%s&peerid=%s&time_and=%d&client_version=androidswjsq-%s&userid=%s&os=android-5.0.1.23SmallRice%s' % (
-                API_URL,
-                cmd,
-                ('sessionid=%s&' % session_id) if session_id else '',
-                APP_VERSION,
-                MAC,
-                time.time() * 1000,
-                APP_VERSION,
-                uid,
-                ('&%s' % extras) if extras else '',
-        )
-        try:
-            return json.loads(http_req(url, headers = header_api))
-        except URLError as ex:
-            uprint("Warning: error during api connection: %s, use portal: %s" % (str(ex), API_URL))
-            if API_URL == FALLBACK_PORTAL:
-                print("Error: can't connect to api")
-                os._exit(5)
-            API_URL = FALLBACK_PORTAL
-
-
-def fast_d1ck(uname, pwd, save = True):
-    if uname[-2] == ':':
-        print('Error: sub account can not upgrade')
-        os._exit(3)
-
-    dt, _payload = login_xunlei(uname, pwd)
-    if 'sessionID' not in dt:
-        uprint('Error: login failed, %s' % dt['errorDesc'], 'Error: login failed')
-        print(dt)
-        os._exit(1)
-    elif ('isVip' not in dt or not dt['isVip']) and ('payId' not in dt or dt['payId'] not in  [5, 702]):
-        #FIX ME: rewrite if with payId
-        print('Warning: you are probably not xunlei vip, buy buy buy!\n[Debug] isVip:%s payId:%s payName:%s' % (
-          'None' if 'isVip' not in dt else dt['isVip'],
-          'None' if 'payId' not in dt else dt['payId'],
-          'None' if 'payName' not in dt else [dt['payName']]
-        ))
-        #os._exit(2)
-    print('Login xunlei succeeded')
-    if save:
-        try:
-            os.remove(account_file_plain)
-        except:
-            pass
-        with open(account_file_encrypted, 'w') as f:
-            f.write('%s,%s' % (uname, pwd))
-    
-    _ = api('bandwidth', dt['userID'])
-    if 'can_upgrade' not in _ or not _['can_upgrade']:
-        uprint('Error: can not upgrade, so sad TAT %s' % _['message'], 'Error: can not upgrade, so sad TAT')
-        os._exit(3)
-
-    _dial_account = _['dial_account']
-
-    _script_mtime = os.stat(os.path.realpath(__file__)).st_mtime
-    if not os.path.exists(shell_file) or os.stat(shell_file).st_mtime < _script_mtime:
-        make_wget_script(dt['userID'], pwd, _dial_account, _payload)
-    if not os.path.exists(ipk_file) or os.stat(ipk_file).st_mtime < _script_mtime:
-        update_ipk()
-
-    print("To Upgrade: ", end = '')
-    uprint('%s%s ' % ( _['province_name'], _['sp_name']),
-            '%s %s ' % ( _['province'], _['sp']),
-            end = ''
-          )
-    print('Down %dM -> %dM, Up %dM -> %dM' % (
-            _['bandwidth']['downstream']/1024,
-            _['max_bandwidth']['downstream']/1024,
-            _['bandwidth']['upstream']/1024,
-            _['max_bandwidth']['upstream']/1024,
-    ))
-
-    #print(_)
-    def _atexit_func():
-        print("Sending recover request")
-        try:
-            api('recover', dt['userID'], dt['sessionID'], extras = "dial_account=%s" % _dial_account)
-        except KeyboardInterrupt:
-            print('Secondary ctrl+c pressed, exiting')
-    atexit.register(_atexit_func)
-    i = 0
-    while True:
-        has_error = False
-        try:
-            # i=1~17 keepalive, renew session, i++
-            # i=18 (3h) re-upgrade, i:=0
-            # i=100 login, i:=36
-            if i == 100:
-                dt, _payload = login_xunlei(uname, pwd)
-                i = 18
-            if i % 18 == 0:#3h
-                print('Initializing upgrade')
-                if i:# not first time
-                    api('recover', dt['userID'], dt['sessionID'], extras = "dial_account=%s" % _dial_account)
-                    time.sleep(5)
-                _ = api('upgrade', dt['userID'], dt['sessionID'], extras = "user_type=1&dial_account=%s" % _dial_account)
-                #print(_)
-                if not _['errno']:
-                    print('Upgrade done: Down %dM, Up %dM' % (_['bandwidth']['downstream'], _['bandwidth']['upstream']))
-                    i = 0
-            else:
-                _dt_t, _paylod_t = renew_xunlei(dt['userID'], dt['sessionID'])
-                if _dt_t['errorCode']:
-                    i = 100
-                    continue
+    def api(self, cmd, extras = '', no_session = False):
+        ret = {}
+        for _k1, api_url_k, _v in (('down', 'api_url', 'is_down_vip'), ('up', 'api_up_url','is_up_vip')):
+            if not getattr(self, _v):
+                continue
+            while True:
+                # missing dial_account, (userid), os
+                api_url = getattr(self, api_url_k)
+                url = 'http://%s/v2/%s?%sclient_type=android-swjsq-%s&peerid=%s&time_and=%d&client_version=androidswjsq-%s&userid=%s&os=android-5.0.1.23SmallRice%s' % (
+                        api_url,
+                        cmd,
+                        ('sessionid=%s&' % self.xl_session) if not no_session else '',
+                        APP_VERSION,
+                        self.mac,
+                        time.time() * 1000,
+                        APP_VERSION,
+                        self.xl_uid,
+                        ('&%s' % extras) if extras else '',
+                )
                 try:
-                    _ = api('keepalive', dt['userID'], dt['sessionID'])
-                except Exception as ex:
-                    print("keepalive exception: %s" % str(ex))
-                    time.sleep(60)
-                    i = 18
-                    continue
-            if _['errno']:
-                print('Error %s: %s' % (_['errno'], _['message']))
-                if _['errno'] == 513:# TEST: re-upgrade when get 'not exist channel'
-                    i = 100
-                    continue
-                elif _['errno'] == 812:
-                    print('Already upgraded, continuing')
-                    i = 0
-                elif _['errno'] == 717 or _['errno'] == 718:# re-upgrade when get 'account auth session failed'
-                    i = 100
+                    ret[_k1] = {}
+                    ret[_k1] = json.loads(http_req(url, headers = header_api))
+                    break
+                except URLError as ex:
+                    uprint("Warning: error during %sapi connection: %s, use portal: %s" % (_k1, str(ex), api_url))
+                    if (_k1 == 'down' and api_url == FALLBACK_PORTAL) or (_k1 == 'up' and api_url == FALLBACK_UPPORTAL):
+                        print("Error: can't connect to %s api" % _k1)
+                        os._exit(5)
+                    if _k1 == 'down':
+                        setattr(self, api_url_k, FALLBACK_PORTAL)
+                    elif _k1 == 'up':
+                        setattr(self, api_url_k, FALLBACK_UPPORTAL)
+        return ret
+
+
+    def run(self, uname, pwd, save = True):
+        if uname[-2] == ':':
+            print('Error: sub account can not upgrade')
+            os._exit(3)
+
+        dt = self.login_xunlei(uname, pwd)
+
+        if not self.xl_session:
+            uprint('Error: login xunlei failed, %s' % dt['errorDesc'], 'Error: login failed')
+            print(dt)
+            os._exit(1)
+        print('Login xunlei succeeded')
+        
+        yyyymmdd = time.strftime("%Y%m%d", time.localtime(time.time()))
+        
+        _vas_debug = []
+        for _vas, _name, _v in ((VASID_DOWN, 'fastdick', 'is_down_vip'), (VASID_UP, 'upstream acceleration', 'is_up_vip')):
+            _dt = self.check_xunlei_vas(_vas)
+            _vas_debug.append({k:_dt[k] for k in _dt if k.startswith("other")})
+            if _dt['other_isVip'] == 1:
+                if _dt['other_expireDate'] < yyyymmdd:
+                    print('Warning: Your %s membership expires on %s' % (_name, _dt['other_expireDate']))
+                else:
+                    print('Expire date for %s: %s' % (_name, _dt['other_expireDate']))
+                    setattr(self, _v, True)
+                
+        if not self.is_down_vip and not self.is_up_vip:
+            print('Error: You are neither xunlei fastdick member nor upstream acceleration member, buy buy buy!\nDebug: %s' % _vas_debug)
+            os._exit(2)
+
+        if save:
+            try:
+                os.remove(account_file_plain)
+            except:
+                pass
+            with open(account_file_encrypted, 'w') as f:
+                f.write('%s,%s' % (uname, pwd))
+        
+        api_ret = self.api('bandwidth', no_session = True)
+        
+        _to_upgrade = []
+        for _k1, _k2, _name, _v in (
+                ('down', 'downstream', 'fastdick', 'is_down_vip'),
+                ('up', 'upstream', 'upstream acceleration', 'is_up_vip')):
+            if not getattr(self, _v):
+                continue
+
+            _ = api_ret[_k1]
+            if 'can_upgrade' not in _ or not _['can_upgrade']:
+                uprint('Warning: %s can not upgrade, so sad TAT: %s' % (_name, _['message']), 'Error: %s can not upgrade, so sad TAT' % _name)
+                setattr(self, _v, False)
+            else:
+                _to_upgrade.append('%s %dM -> %dM' % (
+                        _k1, 
+                        _['bandwidth'][_k2]/1024,
+                        _['max_bandwidth'][_k2]/1024,
+                    ))
+        
+        if not self.is_down_vip and not self.is_up_vip:
+            print("Error: both downstream and upstream can't be upgraded")
+            os._exit(3)
+        
+        _avail = api_ret[list(api_ret.keys())[0]]
+        
+        uprint('To Upgrade: %s%s %s' % ( _avail['province_name'], _avail['sp_name'], ", ".join(_to_upgrade)),
+                'To Upgrade: %s %s %s' % ( _avail['province'], _avail['sp'], ", ".join(_to_upgrade))
+              )
+              
+        _dial_account = _avail['dial_account']
+
+        _script_mtime = os.stat(os.path.realpath(__file__)).st_mtime
+        if not os.path.exists(shell_file) or os.stat(shell_file).st_mtime < _script_mtime:
+            self.make_wget_script(pwd, _dial_account)
+        if not os.path.exists(ipk_file) or os.stat(ipk_file).st_mtime < _script_mtime:
+            update_ipk()
+
+        #print(_)
+        def _atexit_func():
+            print("Sending recover request")
+            try:
+                self.api('recover', extras = "dial_account=%s" % _dial_account)
+            except KeyboardInterrupt:
+                print('Secondary ctrl+c pressed, exiting')
+            try:
+                logfd.close()
+            except:
+                pass
+        atexit.register(_atexit_func)
+        self.state = 0
+        while True:
+            has_error = False
+            try:
+                # self.state=1~17 keepalive, renew session, self.state++
+                # self.state=18 (3h) re-upgrade all, self.state-=18
+                # self.state=100 login, self.state:=18
+                if self.state == 100:
+                    dt = self.login_xunlei(uname, pwd)
+                    self.state = 18
+                if self.state % 18 == 0:#3h
+                    print('Initializing upgrade')
+                    if self.state:# not first time
+                        self.api('recover', extras = "dial_account=%s" % _dial_account)
+                        time.sleep(5)
+                    api_ret = self.api('upgrade', extras = "user_type=1&dial_account=%s" % _dial_account)
+                    #print(_)
+                    _upgrade_done = []
+                    for _k1, _k2 in ('down', 'downstream'), ('up', 'upstream'):
+                        if _k1 not in api_ret:
+                            continue
+                        if not api_ret[_k1]['errno']:
+                            _upgrade_done.append("%s %dM" % (_k1, api_ret[_k1]['bandwidth'][_k2]/1024))
+                    if _upgrade_done:
+                        print("Upgrade done: %s" % ", ".join(_upgrade_done))
+                else:
+                    _dt_t = self.renew_xunlei()
+                    if _dt_t['errorCode']:
+                        self.state = 100
+                        continue
+                    try:
+                        api_ret = self.api('keepalive')
+                    except Exception as ex:
+                        print("keepalive exception: %s" % str(ex))
+                        time.sleep(60)
+                        self.state = 18
+                        continue
+                for _k1, _k2 in ('down', 'Downstream'), ('up', 'Upstream'):
+                    if _k1 in api_ret and api_ret[_k1]['errno']:
+                        _ = api_ret[_k1]
+                        print('%s error %s: %s' % (_k2, _['errno'], _['message']))
+                        if _['errno'] in (513, 824):# TEST: re-upgrade when get 513 or 824 speedup closed
+                            self.state = 100
+                        elif _['errno'] == 812:
+                            print('%s already upgraded, continuing' % _k2)
+                            self.state = 0
+                        elif _['errno'] == 717 or _['errno'] == 718:# re-upgrade when get 'account auth session failed'
+                            self.state = 100
+                if self.state == 100:
                     continue
                 else:
                     time.sleep(300)#os._exit(4)
-        except Exception as ex:
-            import traceback
-            _ = traceback.format_exc()
-            print(_)
-            has_error = True
-        with open('swjsq.log', 'a') as f:
-            try:
-                f.write('%s %s\n' % (time.strftime('%X', time.localtime(time.time())), _))
-            except UnicodeEncodeError:
-                f.write('%s keepalive\n' % (time.strftime('%X', time.localtime(time.time()))))
-        if has_error:
-            # sleep 5 min and repeat the same state
-            time.sleep(290)#5 min
-        else:
-            i += 1
-            time.sleep(590)#10 min
+            except Exception as ex:
+                import traceback
+                _ = traceback.format_exc()
+                print(_)
+                has_error = True
+            if has_error:
+                # sleep 5 min and repeat the same state
+                time.sleep(290)#5 min
+            else:
+                self.state += 1
+                time.sleep(590)#10 min
 
 
-def make_wget_script(uid, pwd, dial_account, _payload):
-    # i=1~17 keepalive, renew session, i++
-    # i=18 (3h) re-upgrade, i:=0
-    # i=100 login, i:=18
-    with open(shell_file, 'wb') as f:
-        _ = '''#!/bin/ash
+    def make_wget_script(self, pwd, dial_account):
+        # i=1~17 keepalive, renew session, i++
+        # i=18 (3h) re-upgrade, i:=0
+        # i=100 login, i:=18
+        with open(shell_file, 'wb') as f:
+            _ = '''#!/bin/ash
 TEST_URL="https://baidu.com"
 UA_XL="User-Agent: swjsq/0.0.1"
 
@@ -430,10 +528,10 @@ else
    POST_ARG="--data "
 fi
 
-uid='''+str(uid)+'''
+uid='''+str(self.xl_uid)+'''
 pwd='''+rsa_encode(pwd)+'''
 nic=eth0
-peerid='''+MAC+'''
+peerid='''+self.mac+'''
 uid_orig=$uid
 
 last_login_xunlei=0
@@ -445,8 +543,8 @@ orig_day_of_month=`echo $day_of_month_orig|grep -oE "[1-9]{1,2}"`
 #portal_ip=`echo $portal|grep -oE '([0-9]{1,3}[\.]){3}[0-9]{1,3}'`
 #portal_port_temp=`echo $portal|grep -oE "port...[0-9]{1,5}"`
 #portal_port=`echo $portal_port_temp|grep -oE '[0-9]{1,5}'`
-portal_ip='''+API_URL.split(":")[0]+'''
-portal_port='''+API_URL.split(":")[1]+'''
+portal_ip='''+self.api_url.split(":")[0]+'''
+portal_port='''+self.api_url.split(":")[1]+'''
 
 if [ -z "$portal_ip" ]; then
     sleep 30
@@ -470,7 +568,7 @@ while true; do
         fi
         last_login_xunlei=$tmstmp
         echo "login xunlei"
-        ret=`$HTTP_REQ https://login.mobile.reg2t.sandai.net:443/ $POST_ARG"'''+_payload.replace('"','\\"')+'''" --header "$UA_XL"`
+        ret=`$HTTP_REQ https://login.mobile.reg2t.sandai.net:443/ $POST_ARG"'''+json.dumps(self.xl_login_payload).replace('"','\\"')+'''" --header "$UA_XL"`
         session_temp=`echo $ret|grep -oE "sessionID...[A-F,0-9]{32}"`
         session=`echo $session_temp|grep -oE "[A-F,0-9]{32}"`
         uid_temp=`echo $ret|grep -oE "userID..[0-9]{9}"`
@@ -540,9 +638,9 @@ while true; do
     fi
 done
 '''.replace("\r", "")
-        if PY3K:
-            _ = _.encode("utf-8")
-        f.write(_)
+            if PY3K:
+                _ = _.encode("utf-8")
+            f.write(_)
 
 
 def update_ipk():
@@ -634,21 +732,22 @@ if __name__ == '__main__':
         _wd = sys.path[0]
     os.chdir(_wd)
     
-    setup()
+    ins = fast_d1ck()
+    
     try:
         if os.path.exists(account_file_plain):
             uid, pwd = open(account_file_plain).read().strip().split(',')
             if PY3K:
                 pwd = pwd.encode('utf-8')
-            fast_d1ck(uid, hashlib.md5(pwd).hexdigest())
+            ins.run(uid, hashlib.md5(pwd).hexdigest())
         elif os.path.exists(account_file_encrypted):
             uid, pwd_md5 = open(account_file_encrypted).read().strip().split(',')
-            fast_d1ck(uid, pwd_md5, save = False)
+            ins.run(uid, pwd_md5, save = False)
         elif 'XUNLEI_UID' in os.environ and 'XUNLEI_PASSWD' in os.environ:
             uid = os.environ['XUNLEI_UID']
             pwd = os.environ['XUNLEI_PASSWD']
-            fast_d1ck(uid, hashlib.md5(pwd).hexdigest())
+            ins.run(uid, hashlib.md5(pwd).hexdigest())
         else:
-            print('Please use XUNLEI_UID=<uid>/XUNLEI_PASSWD=<pass> envrionment varibles or create config file "%s", input account splitting with comma(,). Eg:\nyonghuming,mima' % account_file_plain)
+            _real_print('Please use XUNLEI_UID=<uid>/XUNLEI_PASSWD=<pass> envrionment varibles or create config file "%s", input account splitting with comma(,). Eg:\nyonghuming,mima' % account_file_plain)
     except KeyboardInterrupt:
         pass
