@@ -1,6 +1,6 @@
 迅雷快鸟
 ===
-一个可以运行在路由器的迅雷快鸟(diǎo)客户端
+一个可以运行在路由器的迅雷快鸟(diǎo)和上行提速客户端
 
 在提交issue前，请先阅读[须知](https://github.com/fffonion/Xunlei-Fastdick/blob/master/CONTRIBUTING.md)
 
@@ -18,7 +18,7 @@
 2. 安装Python (OpenWRT用户可以安装完整的`python`包，或者安装`python-light`, `python-codecs`和`python-openssl`三个包
 3. 将[swjsq.py](https://github.com/fffonion/Xunlei-Fastdick/raw/master/swjsq.py)通过[WinSCP](https://winscp.net/eng/download.php)拷贝到路由`/data/usr/bin/swjsq`，同目录下新建 __swjsq.account.txt__，填入`用户名,密码`，如`ahaha,123456`（英文逗号），并保存
 4. 使用SSH进入目录`/data/usr/bin/swjsq`，运行`$ python ./swjsq.py`
-5. 测试运行一次看能否提速，提示`Upgrade done: Down xxM, Up xxM`即表示成功
+5. 测试运行一次看能否提速，提示`Upgrade done: down xxM, up xxM`即表示成功。如果只开启了快鸟会员，则只显示`down xxM`；如果只开启了上行提速会员，则只显示`up xxM`。
 6. 设置自启动
      SSH运行`vi /etc/rc.local` 或者进入LuCI的`本地启动脚本`界面：
 	 在exit0语句之前加上：
@@ -34,7 +34,7 @@
 2. 在PC上安装Python，2.x或3.x版本均可
 3. 下载[swjsq.py](https://github.com/fffonion/Xunlei-Fastdick/raw/master/swjsq.py)，同目录下新建 __swjsq.account.txt__，填入`用户名,密码`，如`ahaha,123456`（英文逗号），并保存
 4. 在PC的命令提示符中进入刚才下载的目录，然后运行`python swjsq.py`
-5. 提示`Upgrade done: Down xxM, Up %xxM`即表示成功登陆成功
+5. 提示`Upgrade done: down xxM, up %xxM`即表示成功登陆成功。如果只开启了快鸟会员，则只显示`down xxM`；如果只开启了上行提速会员，则只显示`up xxM`。
 6. 安装生成的`swjsq_0.0.1_all.ipk`，安装后，路由`/bin`目录将有 __swjsq__ 文件；进入第8步
 7. 如果对路由器`/bin`目录的修改重启后会丢失，请使用[WinSCP](https://winscp.net/eng/download.php)手动将前一步中PC上生成的`swjsq_wget.sh`拷贝到路由器上不会丢失的目录，如`/data/usr/bin`，并更名为`swjsq`；进入第9步
 8. 设置自启动，在路由器的`启动项`界面将`swjsq`设置为**已启用**；进入第10步
@@ -80,6 +80,7 @@ $ docker run -d --name=xunlei-fastdick --restart=unless-stopped -e XUNLEI_UID=<u
 
 # 说明
 * 生成的`swjsq_wget.sh`和`swjsq_0.0.1_all.ipk`包含了账户信息，请不要共享给他人使用
+* 程序会查询快鸟和上行提速的到期时间，并自动选择是否开启快鸟提速和上行提速功能
 * 明文存储的密码将会在第一次登陆成功后保存为数字ID和密码的MD5，明文文件将会删除。如果需要更换账号，只需新建一个 __swjsq.account.txt__，并重新运行python脚本
 * 如果修改或更新了python脚本，下次运行时将重新生成ipk包和`swjsq_wget.sh`，请重新安装ipk或拷贝`swjsq_wget.sh`到路由器
 * 会员权限及月加速流量等详见[这里](http://swjsq.xunlei.com)
