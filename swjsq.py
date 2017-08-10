@@ -224,8 +224,8 @@ class fast_d1ck(object):
         self.xl_session = None
         self.xl_login_payload = None
         self.last_login_xunlei = 0
-        self.is_down_vip = False
-        self.is_up_vip = False
+        self.do_down_accel = False
+        self.do_up_accel = False
         
         self.state = 0
 
@@ -324,7 +324,7 @@ class fast_d1ck(object):
 
     def api(self, cmd, extras = '', no_session = False):
         ret = {}
-        for _k1, api_url_k, _v in (('down', 'api_url', 'is_down_vip'), ('up', 'api_up_url','is_up_vip')):
+        for _k1, api_url_k, _v in (('down', 'api_url', 'do_down_accel'), ('up', 'api_up_url','do_up_accel')):
             if not getattr(self, _v):
                 continue
             while True:
@@ -373,7 +373,7 @@ class fast_d1ck(object):
         yyyymmdd = time.strftime("%Y%m%d", time.localtime(time.time()))
         
         _vas_debug = []
-        for _vas, _name, _v in ((VASID_DOWN, 'fastdick', 'is_down_vip'), (VASID_UP, 'upstream acceleration', 'is_up_vip')):
+        for _vas, _name, _v in ((VASID_DOWN, 'fastdick', 'do_down_accel'), (VASID_UP, 'upstream acceleration', 'do_up_accel')):
             _dt = self.check_xunlei_vas(_vas)
             _vas_debug.append({k:_dt[k] for k in _dt if k.startswith("other")})
             if _dt['other_isVip'] == 1:
@@ -383,7 +383,7 @@ class fast_d1ck(object):
                     print('Expire date for %s: %s' % (_name, _dt['other_expireDate']))
                     setattr(self, _v, True)
                 
-        if not self.is_down_vip and not self.is_up_vip:
+        if not self.do_down_accel and not self.do_up_accel:
             print('Error: You are neither xunlei fastdick member nor upstream acceleration member, buy buy buy!\nDebug: %s' % _vas_debug)
             os._exit(2)
 
@@ -399,8 +399,8 @@ class fast_d1ck(object):
         
         _to_upgrade = []
         for _k1, _k2, _name, _v in (
-                ('down', 'downstream', 'fastdick', 'is_down_vip'),
-                ('up', 'upstream', 'upstream acceleration', 'is_up_vip')):
+                ('down', 'downstream', 'fastdick', 'do_down_accel'),
+                ('up', 'upstream', 'upstream acceleration', 'do_up_accel')):
             if not getattr(self, _v):
                 continue
 
@@ -415,8 +415,8 @@ class fast_d1ck(object):
                         _['max_bandwidth'][_k2]/1024,
                     ))
         
-        if not self.is_down_vip and not self.is_up_vip:
-            print("Error: both downstream and upstream can't be upgraded")
+        if not self.do_down_accel and not self.do_up_accel:
+            print("Error: neither downstream nor upstream can be upgraded")
             os._exit(3)
         
         _avail = api_ret[list(api_ret.keys())[0]]
@@ -482,7 +482,7 @@ class fast_d1ck(object):
                         time.sleep(60)
                         self.state = 18
                         continue
-                for _k1, _k2 in ('down', 'Downstream'), ('up', 'Upstream'):
+                for _k1, _k2, _name, _v in ('down', 'Downstream', 'fastdick', 'do_down_accel'), ('up', 'Upstream', 'upstream acceleration', 'do_up_accel'):
                     if _k1 in api_ret and api_ret[_k1]['errno']:
                         _ = api_ret[_k1]
                         print('%s error %s: %s' % (_k2, _['errno'], _['message']))
@@ -490,13 +490,15 @@ class fast_d1ck(object):
                             self.state = 100
                         elif _['errno'] == 812:
                             print('%s already upgraded, continuing' % _k2)
-                            self.state = 0
                         elif _['errno'] == 717 or _['errno'] == 718:# re-upgrade when get 'account auth session failed'
                             self.state = 100
+                        elif _['errno'] == 518: # disable down/up when get qurey vip response user not has business property
+                            print("Warning: membership expired? Disabling %s" % _name)
+                            setattr(self, _v, False)
+                        else:
+                            has_error = True
                 if self.state == 100:
                     continue
-                else:
-                    time.sleep(300)#os._exit(4)
             except Exception as ex:
                 import traceback
                 _ = traceback.format_exc()
@@ -539,12 +541,15 @@ login_xunlei_intv='''+str(login_xunlei_intv)+'''
 
 day_of_month_orig=`date +%d`
 orig_day_of_month=`echo $day_of_month_orig|grep -oE "[1-9]{1,2}"`
+
 #portal=`$HTTP_REQ http://api.portal.swjsq.vip.xunlei.com:82/v2/queryportal`
 #portal_ip=`echo $portal|grep -oE '([0-9]{1,3}[\.]){3}[0-9]{1,3}'`
 #portal_port_temp=`echo $portal|grep -oE "port...[0-9]{1,5}"`
 #portal_port=`echo $portal_port_temp|grep -oE '[0-9]{1,5}'`
 portal_ip='''+self.api_url.split(":")[0]+'''
 portal_port='''+self.api_url.split(":")[1]+'''
+portal_up_ip='''+self.api_up_url.split(":")[0]+'''
+portal_up_port='''+self.api_up_url.split(":")[1]+'''
 
 if [ -z "$portal_ip" ]; then
     sleep 30
@@ -553,11 +558,21 @@ if [ -z "$portal_ip" ]; then
     portal_port_temp=`echo $portal|grep -oE "port...[0-9]{1,5}"`
     portal_port=`echo $portal_port_temp|grep -oE '[0-9]{1,5}'`
     if [ -z "$portal_ip" ]; then
-        portal_ip="119.147.41.210"
-        portal_port=80
+        portal_ip="'''+FALLBACK_PORTAL.split(":")[0]+'''"
+        portal_port='''+FALLBACK_PORTAL.split(":")[1]+'''
     fi
 fi
+
+function log {
+    echo `date +%X 2>/dev/null` $@
+}
+
 api_url="http://$portal_ip:$portal_port/v2"
+api_up_url="http://$portal_up_ip:$portal_up_port/v2"
+
+do_down_accel='''+str(int(self.do_down_accel))+'''
+do_up_accel='''+str(int(self.do_up_accel))+'''
+
 i=100
 while true; do
     if test $i -ge 100; then
@@ -567,7 +582,7 @@ while true; do
             sleep $slp
         fi
         last_login_xunlei=$tmstmp
-        echo "login xunlei"
+        log "login xunlei"
         ret=`$HTTP_REQ https://login.mobile.reg2t.sandai.net:443/ $POST_ARG"'''+json.dumps(self.xl_login_payload).replace('"','\\"')+'''" --header "$UA_XL"`
         session_temp=`echo $ret|grep -oE "sessionID...[A-F,0-9]{32}"`
         session=`echo $session_temp|grep -oE "[A-F,0-9]{32}"`
@@ -575,27 +590,32 @@ while true; do
         uid=`echo $uid_temp|grep -oE "[0-9]{9}"`
         i=18
         if [ -z "$session" ]; then
-            echo "session is empty"
+            log "session is empty"
             i=100
             sleep 60
             uid=$uid_orig
             continue
         else
-            echo "session is $session"
+            log "session is $session"
         fi
 
         if [ -z "$uid" ]; then
             #echo "uid is empty"
             uid=$uid_orig
         else
-            echo "uid is $uid"
+            log "uid is $uid"
         fi
     fi
 
     if test $i -eq 18; then
-        echo "upgrade"
+        log "upgrade"
         _ts=`date +%s`0000
-        $HTTP_REQ "$api_url/upgrade?peerid=$peerid&userid=$uid&sessionid=$session&user_type=1&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"
+        if test $do_down_accel -eq 1; then
+            $HTTP_REQ "$api_url/upgrade?peerid=$peerid&userid=$uid&sessionid=$session&user_type=1&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"
+        fi
+        if test $do_up_accel -eq 1; then
+            $HTTP_REQ "$api_up_url/upgrade?peerid=$peerid&userid=$uid&sessionid=$session&user_type=1&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"
+        fi
         i=1
         sleep 590
         continue
@@ -605,16 +625,21 @@ while true; do
     day_of_month_orig=`date +%d`
     day_of_month=`echo $day_of_month_orig|grep -oE "[1-9]{1,2}"`
     if [[ -z $orig_day_of_month || $day_of_month -ne $orig_day_of_month ]]; then
-        echo "recover"
+        log "recover"
         orig_day_of_month=$day_of_month
         _ts=`date +%s`0000
-        $HTTP_REQ "$api_url/recover?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"
+        if test $do_down_accel -eq 1; then
+            $HTTP_REQ "$api_url/recover?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"
+        fi
+        if test $do_up_accel -eq 1; then
+            $HTTP_REQ "$api_up_url/recover?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"
+        fi
         sleep 5
         i=100
         continue
     fi
 
-    echo "renew xunlei"
+    log "renew xunlei"
     ret=`$HTTP_REQ https://login.mobile.reg2t.sandai.net:443/ $POST_ARG"{\\"protocolVersion\\":'''+str(PROTOCOL_VERSION)+''',\\"sequenceNo\\":1000000,\\"platformVersion\\":1,\\"peerID\\":\\"$peerid\\",\\"businessType\\":68,\\"clientVersion\\":\\"'''+APP_VERSION+'''\\",\\"isCompressed\\":0,\\"cmdID\\":11,\\"userID\\":$uid,\\"sessionID\\":\\"$session\\"}" --header "$UA_XL"`
     error_code=`echo $ret|grep -oE "errorCode..[0-9]+"|grep -oE "[0-9]+"`
     if [[ -z $error_code || $error_code -ne 0 ]]; then
@@ -622,17 +647,40 @@ while true; do
         continue
     fi
 
-    echo "keepalive"
+    log "keepalive"
     _ts=`date +%s`0000
-    ret=`$HTTP_REQ "$api_url/keepalive?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"`
-    if [[ -z $ret ]]; then
-        sleep 60
-        i=18
-        continue
+    if test $do_down_accel -eq 1; then
+        ret=`$HTTP_REQ "$api_url/keepalive?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"`
+        if [[ -z $ret ]]; then
+            sleep 60
+            i=18
+            continue
+        fi
+        if [ ! -z "`echo $ret|grep "not exist channel"`" ]; then
+            i=100
+        fi
+        if  [ ! -z "`echo $ret|grep "user not has business property"`" ]; then
+            log "membership expired? disabling fastdick"
+            do_down_accel=0
+        fi
     fi
-    if [ ! -z "`echo $ret|grep "not exist channel"`" ]; then
-        i=100
-    else
+    if test $do_up_accel -eq 1; then
+        ret=`$HTTP_REQ "$api_up_url/keepalive?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"`
+        if [[ -z $ret ]]; then
+            sleep 60
+            i=18
+            continue
+        fi
+        if [ ! -z "`echo $ret|grep "not exist channel"`" ]; then
+            i=100
+        fi
+        if  [ ! -z "`echo $ret|grep "user not has business property"`" ]; then
+            log "membership expired? disabling upstream acceleration"
+            do_up_accel=0
+        fi
+    fi
+    
+    if test $i -ne 100; then
         let i=i+1
         sleep 590
     fi
