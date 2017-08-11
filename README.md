@@ -22,7 +22,7 @@
 6. 设置自启动
      SSH运行`vi /etc/rc.local` 或者进入LuCI的`本地启动脚本`界面：
 	 在exit0语句之前加上：
-     `nohup python /data/usr/bin/swjsq.py >/dev/null 2>&1 &`
+     `nohup python /data/usr/bin/swjsq/swjsq.py >/dev/null 2>&1 &`
 7. 重启，稍等几分钟，ssh到路由，使用ps命令查看swjsq是否正常启动，提速是否成功。
 8. 升级路由器固件后，需要重新设置自启动，swjsq一般不需要重新设置，请注意备份swjsq文件。
 
