@@ -563,7 +563,7 @@ if [ -z "$portal_ip" ]; then
     fi
 fi
 
-log {
+log () {
     echo `date +%X 2>/dev/null` $@
 }
 
