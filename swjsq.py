@@ -372,20 +372,25 @@ class fast_d1ck(object):
         
         yyyymmdd = time.strftime("%Y%m%d", time.localtime(time.time()))
         
-        _vas_debug = []
-        for _vas, _name, _v in ((VASID_DOWN, 'fastdick', 'do_down_accel'), (VASID_UP, 'upstream acceleration', 'do_up_accel')):
-            _dt = self.check_xunlei_vas(_vas)
-            _vas_debug.append({k:_dt[k] for k in _dt if k.startswith("other")})
-            if _dt['other_isVip'] == 1:
-                if _dt['other_expireDate'] < yyyymmdd:
-                    print('Warning: Your %s membership expires on %s' % (_name, _dt['other_expireDate']))
-                else:
-                    print('Expire date for %s: %s' % (_name, _dt['other_expireDate']))
-                    setattr(self, _v, True)
+        if dt['isVip'] == 1 and dt['vasType'] == 5 and dt['expireDate'] > yyyymmdd: # choaji membership
+            self.do_down_accel = True
+            self.do_up_accel = True
+            print('Expire date for chaoji member: %s' % dt['expireDate'])
+        else:
+            _vas_debug = []
+            for _vas, _name, _v in ((VASID_DOWN, 'fastdick', 'do_down_accel'), (VASID_UP, 'upstream acceleration', 'do_up_accel')):
+                _dt = self.check_xunlei_vas(_vas)
+                _vas_debug.append({k:_dt[k] for k in _dt if k.startswith("other")})
+                if _dt['other_isVip'] == 1:
+                    if _dt['other_expireDate'] < yyyymmdd:
+                        print('Warning: Your %s membership expires on %s' % (_name, _dt['other_expireDate']))
+                    else:
+                        print('Expire date for %s: %s' % (_name, _dt['other_expireDate']))
+                        setattr(self, _v, True)
                 
-        if not self.do_down_accel and not self.do_up_accel:
-            print('Error: You are neither xunlei fastdick member nor upstream acceleration member, buy buy buy!\nDebug: %s' % _vas_debug)
-            os._exit(2)
+            if not self.do_down_accel and not self.do_up_accel:
+                print('Error: You are neither xunlei fastdick member nor upstream acceleration member, buy buy buy!\nDebug: %s' % _vas_debug)
+                os._exit(2)
 
         if save:
             try:
