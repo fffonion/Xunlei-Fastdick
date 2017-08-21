@@ -176,7 +176,10 @@ logfd = open(log_file, 'ab')
 
 def print(s, **kwargs):
     line = "%s %s" % (time.strftime('%X', time.localtime(time.time())), s)
-    logfd.write(line.encode('utf-8'))
+    try:
+        logfd.write(line)
+    except UnicodeEncodeError:
+        logfd.write(line.encode('utf-8'))
     if PY3K:
         logfd.write(b'\n')
     else:
@@ -200,7 +203,6 @@ def uprint(s, fallback = None, end = None):
             if fallback:
                 print(fallback, end = end)
         break
-
 
 def http_req(url, headers = {}, body = None, encoding = 'utf-8'):
     req = urllib2.Request(url)
