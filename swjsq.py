@@ -176,10 +176,13 @@ logfd = open(log_file, 'ab')
 
 def print(s, **kwargs):
     line = "%s %s" % (time.strftime('%X', time.localtime(time.time())), s)
-    try:
-        logfd.write(line)
-    except UnicodeEncodeError:
+    if PY3K:
         logfd.write(line.encode('utf-8'))
+    else:
+        try:
+            logfd.write(line)
+        except UnicodeEncodeError:
+            logfd.write(line.encode('utf-8'))
     if PY3K:
         logfd.write(b'\n')
     else:
