@@ -393,7 +393,7 @@ class fast_d1ck(object):
         
         if not self.do_down_accel and not self.do_up_accel:
             print("Error: neither downstream nor upstream can be upgraded")
-            #os._exit(3)
+            os._exit(3)
         
         _avail = api_ret[list(api_ret.keys())[0]]
         
