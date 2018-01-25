@@ -782,8 +782,6 @@ if __name__ == '__main__':
     try:
         if os.path.exists(account_file_plain):
             uid, pwd = open(account_file_plain).read().strip().split(',')
-            if PY3K:
-                pwd = pwd.encode('utf-8')
             ins.run(uid, pwd)
         elif os.path.exists(account_session):
             with open(account_session) as f:
