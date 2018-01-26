@@ -570,8 +570,8 @@ while true; do
         ret=`$HTTP_REQ https://mobile-login.xunlei.com:443/login $POST_ARG"'''+json.dumps(self.xl_login_payload).replace('"','\\"')+'''" --header "$UA_XL"`
         session_temp=`echo $ret|grep -oE "sessionID...[A-F,0-9]{32}"`
         session=`echo $session_temp|grep -oE "[A-F,0-9]{32}"`
-        uid_temp=`echo $ret|grep -oE "userID...[0-9]{9}"`
-        uid=`echo $uid_temp|grep -oE "[0-9]{9}"`
+        uid_temp=`echo $ret|grep -oE "userID...[0-9]+"`
+        uid=`echo $uid_temp|grep -oE "[0-9]+"`
         loginkey=`echo $ret|grep -oE "lk...[a-f,0-9,\.]{96}"`
         i=18
         if [ -z "$session" ]; then
