@@ -267,6 +267,12 @@ class fast_d1ck(object):
         return json.loads(ct)
 
     def renew_xunlei(self):
+        _ = int(login_xunlei_intv - time.time() + self.last_login_xunlei)
+        if _ > 0: 
+            print("sleep %ds to prevent login flood" % _)
+            time.sleep(_)
+        self.last_login_xunlei = time.time()
+
         _payload = dict(self.xl_login_payload)
         _payload.update({
             "sequenceNo": "1000001",
@@ -425,11 +431,19 @@ class fast_d1ck(object):
         while True:
             has_error = False
             try:
-                # self.state=1~17 keepalive, renew session, self.state++
+                # self.state=1~17 keepalive,  self.state++
                 # self.state=18 (3h) re-upgrade all, self.state-=18
                 # self.state=100 login, self.state:=18
                 if self.state == 100:
-                    dt = self.login_xunlei(uname, pwd)
+                    _dt_t = self.renew_xunlei()
+                    if int(_dt_t['errorCode']):
+                        time.sleep(60)
+                        dt = self.login_xunlei(uname, pwd)
+                        if int(dt['errorCode']):
+                            self.state = 100
+                            continue
+                    else:
+                        _dt_t = dt
                     self.state = 18
                 if self.state % 18 == 0:#3h
                     print('Initializing upgrade')
@@ -447,10 +461,10 @@ class fast_d1ck(object):
                     if _upgrade_done:
                         print("Upgrade done: %s" % ", ".join(_upgrade_done))
                 else:
-                    _dt_t = self.renew_xunlei()
-                    if _dt_t['errorCode']:
-                        self.state = 100
-                        continue
+                    # _dt_t = self.renew_xunlei()
+                    # if _dt_t['errorCode']:
+                    #     self.state = 100
+                    #     continue
                     try:
                         api_ret = self.api('keepalive')
                     except Exception as ex:
@@ -566,30 +580,53 @@ while true; do
             sleep $slp
         fi
         last_login_xunlei=$tmstmp
-        log "login xunlei"
-        ret=`$HTTP_REQ https://mobile-login.xunlei.com:443/login $POST_ARG"'''+json.dumps(self.xl_login_payload).replace('"','\\"')+'''" --header "$UA_XL"`
-        session_temp=`echo $ret|grep -oE "sessionID...[A-F,0-9]{32}"`
-        session=`echo $session_temp|grep -oE "[A-F,0-9]{32}"`
-        uid_temp=`echo $ret|grep -oE "userID...[0-9]+"`
-        uid=`echo $uid_temp|grep -oE "[0-9]+"`
-        loginkey=`echo $ret|grep -oE "lk...[a-f,0-9,\.]{96}"`
-        i=18
-        if [ -z "$session" ]; then
-            log "login session is empty"
-            i=100
-            sleep 60
-            uid=$uid_orig
-            continue
-        else
-            log "session is $session"
+
+        if [ ! -z "$loginkey" ]; then
+            log "renew xunlei"
+            ret=`$HTTP_REQ https://mobile-login.xunlei.com:443/loginkey $POST_ARG"'''+json.dumps(xl_renew_payload).replace('"','\\"')+'''" --header "$UA_XL"`
+            error_code=`echo $ret|grep -oE "errorCode...[0-9]+"|grep -oE "[0-9]+"`
+            if [[ -z $error_code || $error_code -ne 0 ]]; then
+                log "renew error code $error_code"
+            fi
+            session_temp=`echo $ret|grep -oE "sessionID...[A-F,0-9]{32}"`
+            session=`echo $session_temp|grep -oE "[A-F,0-9]{32}"`
+            if [ -z "$session" ]; then
+                log "renew session is empty"
+                sleep 60
+            else
+                log "session is $session"
+            fi
         fi
 
-        if [ -z "$uid" ]; then
-            #echo "uid is empty"
-            uid=$uid_orig
-        else
-            log "uid is $uid"
+        if [ -z "$session" ]; then
+            log "login xunlei"
+            ret=`$HTTP_REQ https://mobile-login.xunlei.com:443/login $POST_ARG"'''+json.dumps(self.xl_login_payload).replace('"','\\"')+'''" --header "$UA_XL"`
+            session_temp=`echo $ret|grep -oE "sessionID...[A-F,0-9]{32}"`
+            session=`echo $session_temp|grep -oE "[A-F,0-9]{32}"`
+            uid_temp=`echo $ret|grep -oE "userID...[0-9]+"`
+            uid=`echo $uid_temp|grep -oE "[0-9]+"`
+            if [ -z "$session" ]; then
+                log "login session is empty"
+                uid=$uid_orig
+            else
+                log "session is $session"
+            fi
+
+            if [ -z "$uid" ]; then
+                #echo "uid is empty"
+                uid=$uid_orig
+            else
+                log "uid is $uid"
+            fi
         fi
+
+        if [ -z "$session" ]; then
+            sleep 600
+            continue
+        fi
+
+        loginkey=`echo $ret|grep -oE "lk...[a-f,0-9,\.]{96}"`
+        i=18
     fi
 
     if test $i -eq 18; then
@@ -624,25 +661,6 @@ while true; do
         continue
     fi
 
-    log "renew xunlei"
-    ret=`$HTTP_REQ https://mobile-login.xunlei.com:443/loginkey $POST_ARG"'''+json.dumps(xl_renew_payload).replace('"','\\"')+'''" --header "$UA_XL"`
-    error_code=`echo $ret|grep -oE "errorCode...[0-9]+"|grep -oE "[0-9]+"`
-    if [[ -z $error_code || $error_code -ne 0 ]]; then
-        i=100
-        continue
-    fi
-    session_temp=`echo $ret|grep -oE "sessionID...[A-F,0-9]{32}"`
-    session=`echo $session_temp|grep -oE "[A-F,0-9]{32}"`
-    loginkey=`echo $ret|grep -oE "lk...[a-f,0-9,\.]{96}"`
-    if [ -z "$session" ]; then
-        log "renew session is empty"
-        i=100
-        sleep 60
-        uid=$uid_orig
-        continue
-    else
-        log "session is $session"
-    fi
 
     log "keepalive"
     _ts=`date +%s`0000
