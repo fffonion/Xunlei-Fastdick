@@ -37,11 +37,13 @@ PY3K = sys.version_info[0] == 3
 if not PY3K:
     import urllib2
     from urllib2 import URLError
+    from urllib import quote as url_quote
     from cStringIO import StringIO as sio
     #rsa_pubexp = long(rsa_pubexp)
 else:
     import urllib.request as urllib2
     from urllib.error import URLError
+    from urllib.parse import quote as url_quote
     from io import BytesIO as sio
 
 account_session = '.swjsq.session'
@@ -53,7 +55,10 @@ log_file = 'swjsq.log'
 login_xunlei_intv = 600 # do not login twice in 10min
 
 DEVICE = "SmallRice R1"
+DEVICE_MODEL = "R1"
 OS_VERSION = "5.0.1"
+OS_API_LEVEL = "24"
+OS_BUILD = "LRX22C"
 
 header_xl = {
     'Content-Type':'',
@@ -65,7 +70,7 @@ header_api = {
     'Content-Type':'',
     'Connection': 'Keep-Alive',
     'Accept-Encoding': 'gzip',
-    'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android %s; %s Build/LRX22C)' % (OS_VERSION, DEVICE)
+    'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android %s; %s Build/%s)' % (OS_VERSION, DEVICE_MODEL, OS_BUILD)
 }
 
 
@@ -233,7 +238,7 @@ class fast_d1ck(object):
                 #    "n": long2hex(rsa_mod)
                 #},
                 #"extensionList": "",
-                "deviceModel": DEVICE,
+                "deviceModel": DEVICE_MODEL,
                 "deviceName": DEVICE,
                 "OSVersion": OS_VERSION
         }
@@ -290,21 +295,23 @@ class fast_d1ck(object):
 
     def api(self, cmd, extras = '', no_session = False):
         ret = {}
-        for _k1, api_url_k, _v in (('down', 'api_url', 'do_down_accel'), ('up', 'api_up_url','do_up_accel')):
+        for _k1, api_url_k, _clienttype, _v in (('down', 'api_url', 'swjsq', 'do_down_accel'), ('up', 'api_up_url', 'uplink', 'do_up_accel')):
             if not getattr(self, _v):
                 continue
             while True:
                 # missing dial_account, (userid), os
                 api_url = getattr(self, api_url_k)
-                url = 'http://%s/v2/%s?%sclient_type=android-swjsq-%s&peerid=%s&time_and=%d&client_version=androidswjsq-%s&userid=%s&os=android-5.0.1.23SmallRice%s' % (
+                # TODO: phasing out time_and
+                url = 'http://%s/v2/%s?%sclient_type=android-%s-%s&peerid=%s&time_and=%d&client_version=android%s-%s&userid=%s&os=android-%s%s' % (
                         api_url,
                         cmd,
                         ('sessionid=%s&' % self.xl_session) if not no_session else '',
-                        APP_VERSION,
+                        _clienttype, APP_VERSION,
                         self.mac,
                         time.time() * 1000,
-                        APP_VERSION,
+                        _clienttype, APP_VERSION,
                         self.xl_uid,
+                        url_quote("%s.%s%s" % (OS_VERSION, OS_API_LEVEL, DEVICE_MODEL)),
                         ('&%s' % extras) if extras else '',
                 )
                 try:
@@ -633,10 +640,10 @@ while true; do
         log "upgrade"
         _ts=`date +%s`0000
         if test $do_down_accel -eq 1; then
-            $HTTP_REQ "$api_url/upgrade?peerid=$peerid&userid=$uid&sessionid=$session&user_type=1&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"
+            $HTTP_REQ "$api_url/upgrade?peerid=$peerid&userid=$uid&sessionid=$session&user_type=1&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-'''+OS_VERSION+'.'+OS_API_LEVEL+DEVICE_MODEL+'''&dial_account='''+dial_account+'''"
         fi
         if test $do_up_accel -eq 1; then
-            $HTTP_REQ "$api_up_url/upgrade?peerid=$peerid&userid=$uid&sessionid=$session&user_type=1&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"
+            $HTTP_REQ "$api_up_url/upgrade?peerid=$peerid&userid=$uid&sessionid=$session&user_type=1&client_type=android-uplink-'''+APP_VERSION+'''&time_and=$_ts&client_version=androiduplink-'''+APP_VERSION+'''&os=android-'''+OS_VERSION+'.'+OS_API_LEVEL+DEVICE_MODEL+'''&dial_account='''+dial_account+'''"
         fi
         i=1
         sleep 590
@@ -651,10 +658,10 @@ while true; do
         orig_day_of_month=$day_of_month
         _ts=`date +%s`0000
         if test $do_down_accel -eq 1; then
-            $HTTP_REQ "$api_url/recover?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"
+            $HTTP_REQ "$api_url/recover?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-'''+OS_VERSION+'.'+OS_API_LEVEL+DEVICE_MODEL+'''&dial_account='''+dial_account+'''"
         fi
         if test $do_up_accel -eq 1; then
-            $HTTP_REQ "$api_up_url/recover?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"
+            $HTTP_REQ "$api_up_url/recover?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-uplink-'''+APP_VERSION+'''&time_and=$_ts&client_version=androiduplink-'''+APP_VERSION+'''&os=android-'''+OS_VERSION+'.'+OS_API_LEVEL+DEVICE_MODEL+'''&dial_account='''+dial_account+'''"
         fi
         sleep 5
         i=100
@@ -665,7 +672,7 @@ while true; do
     log "keepalive"
     _ts=`date +%s`0000
     if test $do_down_accel -eq 1; then
-        ret=`$HTTP_REQ "$api_url/keepalive?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"`
+        ret=`$HTTP_REQ "$api_url/keepalive?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-'''+OS_VERSION+'.'+OS_API_LEVEL+DEVICE_MODEL+'''&dial_account='''+dial_account+'''"`
         if [[ -z $ret ]]; then
             sleep 60
             i=18
@@ -680,7 +687,7 @@ while true; do
         fi
     fi
     if test $do_up_accel -eq 1; then
-        ret=`$HTTP_REQ "$api_up_url/keepalive?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-5.0.1.24SmallRice&dial_account='''+dial_account+'''"`
+        ret=`$HTTP_REQ "$api_up_url/keepalive?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-uplink-'''+APP_VERSION+'''&time_and=$_ts&client_version=androiduplink-'''+APP_VERSION+'''&os=android-'''+OS_VERSION+'.'+OS_API_LEVEL+DEVICE_MODEL+'''&dial_account='''+dial_account+'''"`
         if [[ -z $ret ]]; then
             sleep 60
             i=18
