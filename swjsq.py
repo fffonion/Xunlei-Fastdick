@@ -335,14 +335,20 @@ class fast_d1ck(object):
             print('Error: sub account can not upgrade')
             os._exit(3)
 
-        if not self.xl_session:
-            dt = self.login_xunlei(uname, pwd)
-        else:
-            dt = self.renew_xunlei()
+        login_methods = [lambda : self.login_xunlei(uname, pwd)]
+        if self.xl_session:
+            login_methods.insert(0, self.renew_xunlei)
 
-        if dt['errorCode'] != "0" or not self.xl_session or not self.xl_loginkey:
-            uprint('Error: login xunlei failed, %s' % dt['errorDesc'], 'Error: login failed')
-            print(dt)
+        failed = True
+        for _lm in login_methods:
+            dt = _lm()
+            if dt['errorCode'] != "0" or not self.xl_session or not self.xl_loginkey:
+                uprint('Error: login xunlei failed, %s' % dt['errorDesc'], 'Error: login failed')
+                print(dt)
+            else:
+                failed = False
+                break
+        if failed:
             os._exit(1)
         print('Login xunlei succeeded')
         
