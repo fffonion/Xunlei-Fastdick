@@ -360,7 +360,7 @@ class fast_d1ck(object):
             vipList = dt['vipList']
         if vipList and vipList[0]['isVip'] == "1" and vipList[0]['vasType'] == "5" and vipList[0]['expireDate'] > yyyymmdd: # choaji membership
             self.do_down_accel = True
-            self.do_up_accel = True
+            # self.do_up_accel = True
             print('Expire date for chaoji member: %s' % vipList[0]['expireDate'])
         else:
             _vas_debug = []
