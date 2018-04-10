@@ -185,7 +185,7 @@ def http_req(url, headers = {}, body = None, encoding = 'utf-8'):
         except Exception as ex:
             print('Warning: malformed gzip response (%s).' % str(ex))
             # buf is unchanged
-    ret= buf.decode(encoding)
+    ret = buf.decode(encoding)
     if sys.version.startswith('3') and isinstance(ret, bytes):
         ret = str(ret)
     return ret
