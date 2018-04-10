@@ -15,6 +15,11 @@ except ImportError as ex:
     print("Error: cannot import module ssl or hashlib (%s)." % str(ex))
     print("If you are using openwrt, run \"opkg install python-openssl\"")
     os._exit(0)
+try:
+    import zlib
+except ImportError as ex:
+    print("Warning: cannot import module zlib (%s)." % str(ex))
+    # TODO: if there's a python dist that is not bundled with zlib ever exists, disable gzip Accept-Encoding
 
 #xunlei use self-signed certificate; on py2.7.9+
 if hasattr(ssl, '_create_unverified_context') and hasattr(ssl, '_create_default_https_context'):
@@ -172,7 +177,15 @@ def http_req(url, headers = {}, body = None, encoding = 'utf-8'):
     if sys.version.startswith('3') and isinstance(body, str):
         body = bytes(body, encoding = 'ascii')
     resp = urllib2.urlopen(req, data = body, timeout = 60)
-    ret = resp.read().decode(encoding)
+    buf = resp.read()
+    # check if response is gzip encoded
+    if buf.startswith(b'\037\213'):
+        try:
+            buf = zlib.decompress(buf, 16 + zlib.MAX_WBITS) # skip gzip headers
+        except Exception as ex:
+            print('Warning: malformed gzip response (%s).' % str(ex))
+            # buf is unchanged
+    ret= buf.decode(encoding)
     if sys.version.startswith('3') and isinstance(ret, bytes):
         ret = str(ret)
     return ret
