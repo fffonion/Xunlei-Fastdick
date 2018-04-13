@@ -371,25 +371,28 @@ class fast_d1ck(object):
             vipList = []
         else:
             vipList = dt['vipList']
+        # chaoji member
         if vipList and vipList[0]['isVip'] == "1" and vipList[0]['vasType'] == "5" and vipList[0]['expireDate'] > yyyymmdd: # choaji membership
             self.do_down_accel = True
             # self.do_up_accel = True
             print('Expire date for chaoji member: %s' % vipList[0]['expireDate'])
-        else:
-            _vas_debug = []
-            for _vas, _name, _v in ((VASID_DOWN, 'fastdick', 'do_down_accel'), (VASID_UP, 'upstream acceleration', 'do_up_accel')):
-                _dt = self.check_xunlei_vas(_vas)
-                if 'vipList' not in _dt or not _dt['vipList']:
-                    continue
-                for vip in _dt['vipList']:
-                    if vip['vasid'] == str(_vas):
-                        _vas_debug.append(vip)
-                        if vip['isVip'] == "1":
-                            if vip['expireDate'] < yyyymmdd:
-                                print('Warning: Your %s membership expires on %s' % (_name, vip['expireDate']))
-                            else:
-                                print('Expire date for %s: %s' % (_name, vip['expireDate']))
-                                setattr(self, _v, True)
+        # kuainiao down/up member
+        _vas_debug = []
+        for _vas, _name, _v in ((VASID_DOWN, 'fastdick', 'do_down_accel'), (VASID_UP, 'upstream acceleration', 'do_up_accel')):
+            if getattr(self, _v): # don't check again if vas is activated in other membership
+                continue
+            _dt = self.check_xunlei_vas(_vas)
+            if 'vipList' not in _dt or not _dt['vipList']:
+                continue
+            for vip in _dt['vipList']:
+                if vip['vasid'] == str(_vas):
+                    _vas_debug.append(vip)
+                    if vip['isVip'] == "1":
+                        if vip['expireDate'] < yyyymmdd:
+                            print('Warning: Your %s membership expires on %s' % (_name, vip['expireDate']))
+                        else:
+                            print('Expire date for %s: %s' % (_name, vip['expireDate']))
+                            setattr(self, _v, True)
                 
             if not self.do_down_accel and not self.do_up_accel:
                 print('Error: You are neither xunlei fastdick member nor upstream acceleration member, buy buy buy!\nDebug: %s' % _vas_debug)
