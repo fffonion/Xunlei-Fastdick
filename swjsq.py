@@ -362,6 +362,7 @@ class fast_d1ck(object):
                 failed = False
                 break
         if failed:
+            logfd.close()
             os._exit(1)
         print('Login xunlei succeeded')
         
