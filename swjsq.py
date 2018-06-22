@@ -395,9 +395,9 @@ class fast_d1ck(object):
                             print('Expire date for %s: %s' % (_name, vip['expireDate']))
                             setattr(self, _v, True)
                 
-            if not self.do_down_accel and not self.do_up_accel:
-                print('Error: You are neither xunlei fastdick member nor upstream acceleration member, buy buy buy!\nDebug: %s' % _vas_debug)
-                os._exit(2)
+        if not self.do_down_accel and not self.do_up_accel:
+            print('Error: You are neither xunlei fastdick member nor upstream acceleration member, buy buy buy!\nDebug: %s' % _vas_debug)
+            os._exit(2)
 
         if save:
             try:
