@@ -461,9 +461,9 @@ class fast_d1ck(object):
         while True:
             has_error = False
             try:
-                # self.state=1~17 keepalive,  self.state++
-                # self.state=18 (3h) re-upgrade all, self.state-=18
-                # self.state=100 login, self.state:=18
+                # self.state=1~35 keepalive,  self.state++
+                # self.state=36 (6h) re-upgrade all, self.state-=36
+                # self.state=100 login, self.state:=36
                 if self.state == 100:
                     _dt_t = self.renew_xunlei()
                     if int(_dt_t['errorCode']):
@@ -474,8 +474,8 @@ class fast_d1ck(object):
                             continue
                     else:
                         _dt_t = dt
-                    self.state = 18
-                if self.state % 18 == 0:#3h
+                    self.state = 36
+                if self.state % 36 == 0:#3h
                     print('Initializing upgrade')
                     if self.state:# not first time
                         self.api('recover', extras = "dial_account=%s" % _dial_account)
@@ -500,7 +500,7 @@ class fast_d1ck(object):
                     except Exception as ex:
                         print("keepalive exception: %s" % str(ex))
                         time.sleep(60)
-                        self.state = 18
+                        self.state = 36
                         continue
                 for _k1, _k2, _name, _v in ('down', 'Downstream', 'fastdick', 'do_down_accel'), ('up', 'Upstream', 'upstream acceleration', 'do_up_accel'):
                     if _k1 in api_ret and api_ret[_k1]['errno']:
@@ -656,10 +656,10 @@ while true; do
         fi
 
         loginkey=`echo $ret|grep -oE "lk...[a-f,0-9,\.]{96}"`
-        i=18
+        i=36
     fi
 
-    if test $i -eq 18; then
+    if test $i -eq 36; then
         log "upgrade"
         _ts=`date +%s`0000
         if test $do_down_accel -eq 1; then
