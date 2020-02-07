@@ -490,6 +490,7 @@ class fast_d1ck(object):
                             _upgrade_done.append("%s %dM" % (_k1, api_ret[_k1]['bandwidth'][_k2]/1024))
                     if _upgrade_done:
                         print("Upgrade done: %s" % ", ".join(_upgrade_done))
+                        self.state = 1
                 else:
                     # _dt_t = self.renew_xunlei()
                     # if _dt_t['errorCode']:
@@ -528,7 +529,8 @@ class fast_d1ck(object):
                 # sleep 5 min and repeat the same state
                 time.sleep(290)#5 min
             else:
-                self.state += 1
+                # don't ever relogin again
+                # self.state += 1
                 time.sleep(590)#10 min
 
 
