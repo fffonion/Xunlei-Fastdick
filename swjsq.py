@@ -728,7 +728,7 @@ while true; do
     fi
     
     if test $i -ne 100; then
-        let i=i+1
+        #let i=i+1
         sleep 590
     fi
 done
