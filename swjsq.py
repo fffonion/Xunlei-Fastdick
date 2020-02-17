@@ -462,8 +462,8 @@ class fast_d1ck(object):
             has_error = False
             try:
                 # self.state=1~35 keepalive,  self.state++
-                # self.state=36 (6h) re-upgrade all, self.state-=36
-                # self.state=100 login, self.state:=36
+                # self.state=18 (3h) re-upgrade all, self.state-=18
+                # self.state=100 login, self.state:=18
                 if self.state == 100:
                     _dt_t = self.renew_xunlei()
                     if int(_dt_t['errorCode']):
@@ -474,12 +474,13 @@ class fast_d1ck(object):
                             continue
                     else:
                         _dt_t = dt
-                    self.state = 36
-                if self.state % 36 == 0:#3h
+                    self.state = 18
+                if self.state % 18 == 0:#3h
                     print('Initializing upgrade')
                     if self.state:# not first time
                         self.api('recover', extras = "dial_account=%s" % _dial_account)
-                        time.sleep(5)
+                        # throttle to avoid later upgrade call error with too frequent request
+                        time.sleep(20)
                     api_ret = self.api('upgrade', extras = "user_type=1&dial_account=%s" % _dial_account)
                     #print(_)
                     _upgrade_done = []
@@ -490,7 +491,8 @@ class fast_d1ck(object):
                             _upgrade_done.append("%s %dM" % (_k1, api_ret[_k1]['bandwidth'][_k2]/1024))
                     if _upgrade_done:
                         print("Upgrade done: %s" % ", ".join(_upgrade_done))
-                        self.state = 1
+                    op = "upgrade"
+                    print(api_ret)
                 else:
                     # _dt_t = self.renew_xunlei()
                     # if _dt_t['errorCode']:
@@ -501,12 +503,15 @@ class fast_d1ck(object):
                     except Exception as ex:
                         print("keepalive exception: %s" % str(ex))
                         time.sleep(60)
-                        self.state = 36
+                        self.state = 18
                         continue
+                    op = "keepalive"
+                # controls if we skip sleep
+                skip_sleep = False
                 for _k1, _k2, _name, _v in ('down', 'Downstream', 'fastdick', 'do_down_accel'), ('up', 'Upstream', 'upstream acceleration', 'do_up_accel'):
                     if _k1 in api_ret and api_ret[_k1]['errno']:
                         _ = api_ret[_k1]
-                        print('%s error %s: %s' % (_k2, _['errno'], _['message']))
+                        print('%s %s error %s: %s' % (_k2, op, _['errno'], _['message']))
                         if _['errno'] in (513, 824):# TEST: re-upgrade when get 513 or 824 speedup closed
                             self.state = 100
                         elif _['errno'] == 812:
@@ -516,9 +521,15 @@ class fast_d1ck(object):
                         elif _['errno'] == 518: # disable down/up when get qurey vip response user not has business property
                             print("Warning: membership expired? Disabling %s" % _name)
                             setattr(self, _v, False)
+                        elif _['errno'] == 711:
+                            print("request too frequent, retrying in 1 minute")
+                            time.sleep(60)
+                            skip_sleep = True
+                            # not sure if re-login is needed
+                            # self.state = 100
                         else:
                             has_error = True
-                if self.state == 100:
+                if self.state == 100 or skip_sleep:
                     continue
             except Exception as ex:
                 import traceback
@@ -529,8 +540,7 @@ class fast_d1ck(object):
                 # sleep 5 min and repeat the same state
                 time.sleep(290)#5 min
             else:
-                # don't ever relogin again
-                # self.state += 1
+                self.state += 1
                 time.sleep(590)#10 min
 
 
@@ -658,17 +668,29 @@ while true; do
         fi
 
         loginkey=`echo $ret|grep -oE "lk...[a-f,0-9,\.]{96}"`
-        i=36
+        i=18
     fi
 
-    if test $i -eq 36; then
-        log "upgrade"
+    if test $i -eq 18; then
+        # TODO: is it needed to recover before upgrade?
         _ts=`date +%s`0000
         if test $do_down_accel -eq 1; then
-            $HTTP_REQ "$api_url/upgrade?peerid=$peerid&userid=$uid&sessionid=$session&user_type=1&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-'''+OS_VERSION+'.'+OS_API_LEVEL+DEVICE_MODEL+'''&dial_account='''+dial_account+'''"
+            log "upgrade downstream"
+            ret=`$HTTP_REQ "$api_url/upgrade?peerid=$peerid&userid=$uid&sessionid=$session&user_type=1&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-'''+OS_VERSION+'.'+OS_API_LEVEL+DEVICE_MODEL+'''&dial_account='''+dial_account+'''"`
+            if [ ! -z "`echo $ret|grep "client request too frequent"`" ]; then
+                log "upgrade request too frequent, retrying in 1 minute"
+                sleep 60
+                continue
+            fi
         fi
         if test $do_up_accel -eq 1; then
-            $HTTP_REQ "$api_up_url/upgrade?peerid=$peerid&userid=$uid&sessionid=$session&user_type=1&client_type=android-uplink-'''+APP_VERSION+'''&time_and=$_ts&client_version=androiduplink-'''+APP_VERSION+'''&os=android-'''+OS_VERSION+'.'+OS_API_LEVEL+DEVICE_MODEL+'''&dial_account='''+dial_account+'''"
+            log "upgrade upstream"
+            ret=`$HTTP_REQ "$api_up_url/upgrade?peerid=$peerid&userid=$uid&sessionid=$session&user_type=1&client_type=android-uplink-'''+APP_VERSION+'''&time_and=$_ts&client_version=androiduplink-'''+APP_VERSION+'''&os=android-'''+OS_VERSION+'.'+OS_API_LEVEL+DEVICE_MODEL+'''&dial_account='''+dial_account+'''"`
+            if [ ! -z "`echo $ret|grep "client request too frequent"`" ]; then
+                log "upgrade request too frequent, retrying in 1 minute"
+                sleep 60
+                continue
+            fi
         fi
         i=1
         sleep 590
@@ -699,36 +721,46 @@ while true; do
     if test $do_down_accel -eq 1; then
         ret=`$HTTP_REQ "$api_url/keepalive?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-swjsq-'''+APP_VERSION+'''&time_and=$_ts&client_version=androidswjsq-'''+APP_VERSION+'''&os=android-'''+OS_VERSION+'.'+OS_API_LEVEL+DEVICE_MODEL+'''&dial_account='''+dial_account+'''"`
         if [[ -z $ret ]]; then
+            log "keepalive downstream error, re-upgrade" 
             sleep 60
             i=18
             continue
-        fi
-        if [ ! -z "`echo $ret|grep "not exist channel"`" ]; then
+        elif [ ! -z "`echo $ret|grep "not exist channel"`" ]; then
+            log "keepalive downstream not exist channel, re-login" 
             i=100
-        fi
-        if  [ ! -z "`echo $ret|grep "user not has business property"`" ]; then
+            continue
+        elif  [ ! -z "`echo $ret|grep "user not has business property"`" ]; then
             log "membership expired? disabling fastdick"
             do_down_accel=0
+        elif [ ! -z "`echo $ret|grep "client request too frequent"`" ]; then
+            log "keepalive downstream request too frequent, retrying in 1 minute"
+            sleep 60
+            continue
         fi
     fi
     if test $do_up_accel -eq 1; then
         ret=`$HTTP_REQ "$api_up_url/keepalive?peerid=$peerid&userid=$uid&sessionid=$session&client_type=android-uplink-'''+APP_VERSION+'''&time_and=$_ts&client_version=androiduplink-'''+APP_VERSION+'''&os=android-'''+OS_VERSION+'.'+OS_API_LEVEL+DEVICE_MODEL+'''&dial_account='''+dial_account+'''"`
         if [[ -z $ret ]]; then
+            log "keepalive upstream error, re-upgrade" 
             sleep 60
             i=18
             continue
-        fi
-        if [ ! -z "`echo $ret|grep "not exist channel"`" ]; then
+        elif [ ! -z "`echo $ret|grep "not exist channel"`" ]; then
+            log "keepalive upstream not exist channel, re-login" 
             i=100
-        fi
-        if  [ ! -z "`echo $ret|grep "user not has business property"`" ]; then
+            continue
+        elif [ ! -z "`echo $ret|grep "user not has business property"`" ]; then
             log "membership expired? disabling upstream acceleration"
             do_up_accel=0
+        elif [ ! -z "`echo $ret|grep "client request too frequent"`" ]; then
+            log "keepalive request too frequent, retrying in 1 minute"
+            sleep 60
+            continue
         fi
     fi
     
     if test $i -ne 100; then
-        #let i=i+1
+        let i=i+1
         sleep 590
     fi
 done
