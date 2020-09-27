@@ -8,6 +8,13 @@ import time
 import binascii
 import tarfile
 import atexit
+import socket
+
+origin_getaddrinfo = socket.getaddrinfo
+def getaddrinfo_wrapper(host, port, family=0, socktype=0, proto=0, flags=0):
+    return origin_getaddrinfo(host, port, socket.AF_INET, socktype, proto, flags)
+socket.getaddrinfo = getaddrinfo_wrapper
+
 try:
     import ssl
     import hashlib
